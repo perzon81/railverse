@@ -899,7 +899,9 @@ $('#mvOn').onclick=()=>setMoving(true);$('#mvOff').onclick=()=>setMoving(false);
 const sp_=$('#speed');sp_.value=S.speed;$('#speedVal').textContent=S.speed+' km/h';
 sp_.oninput=()=>{S.speed=+sp_.value;$('#speedVal').textContent=S.speed+' km/h';save();};
 const rt=$('#routeTxt'),pre=$('#preset');
-function loadPreset(){resetJourneyFlags();pre.value=S.preset;rt.value=S.routes[S.preset];parseRoute(rt.value);updTag();drawHUD();updRouteNow();}
+let journeyKey='';
+function loadPreset(){pre.value=S.preset;rt.value=S.routes[S.preset];parseRoute(rt.value);
+  const jk=S.preset+'|'+(stations[0]||{}).name+'|'+(stations[stations.length-1]||{}).name+'|'+S.tv.train;if(jk!==journeyKey){journeyKey=jk;resetJourneyFlags();}updTag();drawHUD();updRouteNow();}
 function updTag(){const tag=$('#routeTag');const same=rt.value.trim()===PRESETS[S.preset].text.trim();tag.hidden=!same;tag.textContent=PRESETS[S.preset].tag;}
 pre.onchange=()=>{S.preset=pre.value;S.sim=false;save();loadPreset();};
 rt.oninput=()=>{S.routes[S.preset]=rt.value;parseRoute(rt.value);updTag();save();drawHUD();updRouteNow();};
