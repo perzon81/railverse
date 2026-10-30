@@ -138,6 +138,8 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
         <button class="chip" id="mvOff" aria-pressed="false">Still</button>
         <button class="chip" id="hudBtn" aria-pressed="true">HUD on</button>
         <button class="chip" id="curveBtn" aria-pressed="true">Curves synced</button>
+        <button class="chip" id="soundBtn" aria-pressed="true">Sound on</button>
+        <button class="chip" id="poiBtn" aria-pressed="true">Sights on</button>
       </div>
       <div class="row">
         <label for="speed">Scene speed</label>
@@ -635,6 +637,16 @@ const mapC=document.createElement('canvas');mapC.width=1024;mapC.height=1024;con
 const mapTex=new THREE.CanvasTexture(mapC);mapTex.anisotropy=renderer.capabilities.getMaxAnisotropy();
 const mapMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.5),new THREE.MeshBasicMaterial({map:mapTex,transparent:true,depthTest:false}));
 mapMesh.renderOrder=11;mapMesh.position.set(0.87,0.0,0.1);mapMesh.rotation.y=-0.5;hud.add(mapMesh);
+const poiC=document.createElement('canvas');poiC.width=2048;poiC.height=440;const pctx=poiC.getContext('2d');
+const poiTex=new THREE.CanvasTexture(poiC);poiTex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+const poiMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.15,0.247),new THREE.MeshBasicMaterial({map:poiTex,transparent:true,depthTest:false}));
+poiMesh.renderOrder=12;poiMesh.position.set(0,0.39,0.02);poiMesh.visible=false;hud.add(poiMesh);
+function estPos(st){
+  if(liveFresh()&&LIVE.lat)return {pos:[LIVE.lat,LIVE.lon],live:true};
+  if(!st)return null;
+  if(st.phase==='run'){const a=coordOf(st.prev.name),b=coordOf(st.next.name);if(!a||!b)return null;const u=Math.max(0,Math.min(1,(nowMin()-st.prev.t)/((st.next.t-st.prev.t)||1)));return {pos:[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],live:false,a,b};}
+  const c=coordOf((st.phase==='done'?stations[stations.length-1]:stations[0]).name);return c?{pos:c,live:false}:null;
+}
 function drawMap(st){
   const pts=stations.map(x=>coordOf(x.name));if(stations.length<2||pts.some(p=>!p)){mapMesh.visible=false;return;}mapMesh.visible=true;
   const c=mctx,W=512;c.setTransform(2,0,0,2,0,0);c.clearRect(0,0,W,W);rr(c,4,4,W-8,W-8,36);c.fillStyle='rgba(10,21,64,0.9)';c.fill();
@@ -643,10 +655,7 @@ function drawMap(st){
   const P=p=>[ox+(p[1]-lo0)*kx*sc,oy+(la1-p[0])*sc];
   c.fillStyle='#fff';c.font='bold 26px '+F;c.textAlign='left';c.fillText('Route',36,58);
   // where are we
-  let pos=null,live=false;
-  if(liveFresh()&&LIVE.lat){pos=[LIVE.lat,LIVE.lon];live=true;}
-  else if(st&&st.phase==='run'){const a=coordOf(st.prev.name),b=coordOf(st.next.name),u=Math.max(0,Math.min(1,(nowMin()-st.prev.t)/((st.next.t-st.prev.t)||1)));pos=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];}
-  else if(st)pos=st.phase==='done'?pts[pts.length-1]:pts[0];
+  const ep=estPos(st),pos=ep&&ep.pos,live=ep&&ep.live;
   c.font='bold 16px '+F;c.textAlign='right';c.fillStyle=live?'#ff5a26':'#a9b4d6';c.fillText(live?'LIVE GPS':'ESTIMATED',W-36,56);
   c.lineCap='round';c.lineJoin='round';c.strokeStyle='#41539a';c.lineWidth=6;c.beginPath();pts.forEach((p,i)=>{const q=P(p);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]);});c.stroke();
   const n=nowMin();
@@ -744,6 +753,67 @@ function resize(){if(renderer.xr.isPresenting)return;const w=view.clientWidth,h=
 window.addEventListener('resize',resize);
 
 /* --- loop --- */
+/* ---------- sights along the route (positions approximate; side is computed from travel direction) ---------- */
+const POIS=[
+ {id:'malaren',title:'Lake Mälaren',text:"Sweden's third-largest lake, stretching from here to Stockholm",trig:[59.56,16.22],r:9,look:[59.45,16.35]},
+ {id:'arboga',title:'Arboga',text:'Medieval town, known for the 1435 assembly often called Sweden\'s first Riksdag',trig:[59.394,15.839],r:3,look:[59.394,15.839]},
+ {id:'hjalmaren',title:'Lake Hjälmaren',text:"Sweden's fourth-largest lake, beyond the fields",trig:[59.36,15.42],r:9,look:[59.22,15.62]},
+ {id:'orebro',title:'Örebro Castle',text:'Renaissance castle on an islet in the Svartån river, in the city centre',trig:[59.279,15.212],r:2.5,look:[59.2741,15.2156]},
+ {id:'hallsberg',title:'Hallsberg',text:'One of Sweden\'s key rail junctions, with a large freight marshalling yard',trig:[59.066,15.110],r:3,look:[59.066,15.110]},
+ {id:'tiveden',title:'Tiveden',text:'Deep forest country between Vänern and Vättern, Sweden\'s two largest lakes',trig:[58.93,14.45],r:9,look:[58.75,14.55]},
+ {id:'gotakanal',title:'Göta Canal',text:'The line crosses the canal at Töreboda · opened in 1832',trig:[58.706,14.122],r:2.2,look:[58.706,14.122]},
+ {id:'billingen',title:'Billingen',text:'The table mountain rising west of Skövde',trig:[58.43,13.90],r:6,look:[58.40,13.75]}
+];
+const POI={on:true,cur:null,shownAt:0,seen:{}};
+function distKm(a,b){return Math.hypot((a[0]-b[0])*111.2,(a[1]-b[1])*111.2*Math.cos(a[0]*Math.PI/180));}
+function headingNow(ep){if(liveFresh()&&CURVE.lastH!==null)return CURVE.lastH;if(ep&&ep.a&&ep.b)return bearing(ep.a,ep.b);return null;}
+function poiSide(ep,p){const h=headingNow(ep);if(h===null||distKm(ep.pos,p.look)<0.6)return '';const rel=wrap180(bearing(ep.pos,p.look)-h);
+  return Math.abs(rel)<25?'Ahead':Math.abs(rel)>155?'Behind you':rel<0?'On your left':'On your right';}
+function drawPoi(p,side){const c=pctx,W=1024,H=220;c.setTransform(2,0,0,2,0,0);c.clearRect(0,0,W,H);rr(c,4,4,W-8,H-8,32);c.fillStyle='rgba(255,255,255,0.95)';c.fill();
+  c.fillStyle='#ff5a26';c.font='bold 22px '+F;c.textAlign='left';c.fillText((side||'Nearby').toUpperCase(),40,52);
+  if(side==='On your left'||side==='On your right'){c.save();c.translate(side==='On your left'?W-90:W-60,50);c.fillStyle='#ff5a26';c.beginPath();const d=side==='On your left'?-1:1;c.moveTo(-18*d,-14);c.lineTo(18*d,0);c.lineTo(-18*d,14);c.fill();c.restore();}
+  c.fillStyle='#0a1540';c.font='bold 52px '+F;c.fillText(p.title,40,118,W-80);c.fillStyle='#41539a';c.font='26px '+F;c.fillText(p.text,40,170,W-80);poiTex.needsUpdate=true;}
+function updPoi(st){
+  if(!POI.on){poiMesh.visible=false;POI.cur=null;return;}
+  const ep=estPos(st);if(!ep||(!ep.live&&(!st||st.phase!=='run'))){poiMesh.visible=false;POI.cur=null;return;}
+  if(POI.cur){const p=POI.cur;if(Date.now()-POI.shownAt>45000||distKm(ep.pos,p.trig)>p.r*1.3){POI.cur=null;poiMesh.visible=false;}else{drawPoi(p,poiSide(ep,p));poiMesh.visible=true;}return;}
+  const p=POIS.find(x=>!POI.seen[x.id]&&distKm(ep.pos,x.trig)<=x.r);
+  if(p){POI.seen[p.id]=1;POI.cur=p;POI.shownAt=Date.now();const side=poiSide(ep,p);drawPoi(p,side);poiMesh.visible=true;pulseAll(0.3,120);
+    S.notes.unshift(Object.assign(snap(),{text:'Sight shown: '+p.title+(side?' ('+side.toLowerCase()+')':'')}));save();renderNotes();}
+}
+
+/* ---------- sound that follows the train ---------- */
+const SND={on:true,ac:null};
+function initAudio(){
+  if(SND.ac){if(SND.ac.state==='suspended')SND.ac.resume();return;}
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const ac=new AC();SND.ac=ac;
+  const master=ac.createGain();master.gain.value=SND.on?0.7:0;master.connect(ac.destination);SND.master=master;
+  const len=ac.sampleRate*2,buf=ac.createBuffer(1,len,ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;SND.noise=buf;
+  const src=()=>{const n=ac.createBufferSource();n.buffer=buf;n.loop=true;n.start();return n;};
+  // wind / air
+  const wf=ac.createBiquadFilter();wf.type='bandpass';wf.Q.value=0.6;wf.frequency.value=600;const wg=ac.createGain();wg.gain.value=0;src().connect(wf);wf.connect(wg);wg.connect(master);SND.wf=wf;SND.wg=wg;
+  // low rumble
+  const rf=ac.createBiquadFilter();rf.type='lowpass';rf.frequency.value=110;const rg=ac.createGain();rg.gain.value=0;src().connect(rf);rf.connect(rg);rg.connect(master);SND.rg=rg;
+  // night pad: two soft tones with slow movement
+  const pg=ac.createGain();pg.gain.value=0;const pf=ac.createBiquadFilter();pf.type='lowpass';pf.frequency.value=700;pf.connect(pg);pg.connect(master);SND.pg=pg;
+  [110,164.8,220.6].forEach((f,i)=>{const o=ac.createOscillator();o.type='sine';o.frequency.value=f;const g=ac.createGain();g.gain.value=0.25/(i+1);
+    const l=ac.createOscillator();l.frequency.value=0.05+i*0.03;const lg=ac.createGain();lg.gain.value=0.12/(i+1);l.connect(lg);lg.connect(g.gain);l.start();o.connect(g);g.connect(pf);o.start();});
+  SND.nextClack=ac.currentTime+0.5;
+}
+function clack(t,vol){const ac=SND.ac,n=ac.createBufferSource();n.buffer=SND.noise;const f=ac.createBiquadFilter();f.type='bandpass';f.frequency.value=1400+Math.random()*300;f.Q.value=3;
+  const g=ac.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+0.004);g.gain.exponentialRampToValueAtTime(0.0001,t+0.07);n.connect(f);f.connect(g);g.connect(SND.master);n.start(t,Math.random()*1.5);n.stop(t+0.09);}
+function updAudio(){
+  const ac=SND.ac;if(!ac)return;const t=ac.currentTime,v=sceneSpeed(),k=Math.min(1,v/250);
+  const day=S.mode==='day',night=S.mode==='night',moving=S.moving&&(day||night);
+  SND.master.gain.setTargetAtTime(SND.on?0.7:0,t,0.3);
+  SND.wg.gain.setTargetAtTime(moving?(day?0.22:0.06)*k:0,t,0.5);SND.wf.frequency.setTargetAtTime(300+v*6,t,0.5);
+  SND.rg.gain.setTargetAtTime(moving?(day?0.35:0.18)*Math.min(1,v/120):0,t,0.5);
+  SND.pg.gain.setTargetAtTime(night?0.12:0,t,1.5);
+  if(moving&&v>15){if(SND.nextClack<t)SND.nextClack=t+0.05;
+    while(SND.nextClack<t+0.2){const vol=(day?0.18:0.07)*Math.min(1,v/100);clack(SND.nextClack,vol);clack(SND.nextClack+0.105,vol*0.8);SND.nextClack+=Math.max(0.25,26/(v/3.6));}}
+}
+document.addEventListener('pointerdown',()=>{if(SND.on)initAudio();},{once:true});
+
 const CHK={vrTime:0,next:120,active:false,sel:1,since:0,stickHeld:false};
 const CHK_LABELS=['None','Slight','Noticeable','Queasy','Severe'];
 const ARR={cur:null,done:{}};const WAKE={v:0,mins:999,buzzed:false};
@@ -779,7 +849,8 @@ renderer.setAnimationLoop(()=>{
   if(S.mode==='cinema'){let hov=null;if(renderer.xr.isPresenting)ctls.forEach(c=>{const [o,d]=ctlRay(c);hov=hitCinema(o,d)||hov;});
     tileMeshes.forEach(m=>{const tgt=(m===hov?1.12:1)*(m.userData.film===selFilm?1.06:1);m.scale.setScalar(m.scale.x+(tgt-m.scale.x)*0.3);});}
   if(markFlash>0)markFlash-=dt;
-  hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();
+  updAudio();
+  hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();updPoi(routeState(nowMin()));
     if(ARR.cur&&!ARR.done[ARR.cur.name]){ARR.done[ARR.cur.name]=1;pulseAll(0.6,250);}
     if(WAKE.v>0&&WAKE.mins>0&&!WAKE.buzzed){WAKE.buzzed=true;if(S.mode==='night')pulseAll(0.4,400);}}
   renderer.render(scene,camera);
@@ -813,6 +884,10 @@ $('#ytList').addEventListener('click',e=>{const b=e.target.closest('[data-yt]');
 renderYt();
 
 /* ---------- UI wiring ---------- */
+function setSound(on){SND.on=on;if(on)initAudio();const b=$('#soundBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'Sound on':'Sound off';}
+$('#soundBtn').onclick=()=>setSound(!SND.on);
+function setPoi(on){POI.on=on;const b=$('#poiBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'Sights on':'Sights off';}
+$('#poiBtn').onclick=()=>setPoi(!POI.on);
 function setCurve(on){CURVE.on=on;const b=$('#curveBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'Curves synced':'Curves off';}
 $('#curveBtn').onclick=()=>setCurve(!CURVE.on);
 function setHud(on){S.hud=on;hud.visible=on;const b=$('#hudBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'HUD on':'HUD off';}
@@ -859,6 +934,7 @@ if(navigator.xr&&navigator.xr.isSessionSupported){
 let session=null;
 vrBtn.onclick=async()=>{
   if(session){session.end();return;}
+  if(SND.on)initAudio();
   try{session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor']});
     await renderer.xr.setSession(session);
     vrBtn.textContent='Exit VR';vrStatus.textContent='Trigger: scene/select · grip: HUD · stick click: marker · A/X: next clip · B/Y: play/pause';
