@@ -121,7 +121,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 
 <main class="wrap">
   <div class="stage">
-    <div class="view" id="view"><div class="hint">Drag to look around · In VR: trigger = scene, grip = HUD, A/X = next clip</div></div>
+    <div class="view" id="view"><div class="hint">Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker</div></div>
     <div class="vrrow">
       <button class="btn primary" id="vrBtn" disabled>Enter VR</button>
       <div class="status" id="vrStatus">Checking WebXR…</div>
@@ -137,6 +137,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
         <button class="chip" id="mvOn" aria-pressed="true">Scene moves</button>
         <button class="chip" id="mvOff" aria-pressed="false">Still</button>
         <button class="chip" id="hudBtn" aria-pressed="true">HUD on</button>
+        <button class="chip" id="curveBtn" aria-pressed="true">Curves synced</button>
       </div>
       <div class="row">
         <label for="speed">Scene speed</label>
@@ -261,15 +262,11 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 </main>
 <div class="handoff" id="handoff" hidden>
   <div class="card" role="dialog" aria-labelledby="hoTitle">
-    <div class="eyebrow">dream Cinema · handing over to</div>
+    <div class="eyebrow" id="hoEyebrow">dream Cinema · handing over to</div>
     <h2 id="hoTitle">Prime Video</h2>
     <p class="note" id="hoFilm" style="font-size:14px"></p>
-    <a class="go" href="https://www.primevideo.com" target="_blank" rel="noopener">Continue in Prime Video</a>
-    <ol>
-      <li>Downloaded film: press the <b>Meta button</b> and open the <b>Prime Video</b> app, then Downloads.</li>
-      <li>Streaming: the button opens Prime Video in the browser over the train Wi-Fi.</li>
-      <li>Come back here afterwards and log the session under Private cinema.</li>
-    </ol>
+    <a class="go" id="hoGo" href="https://www.primevideo.com" target="_blank" rel="noopener">Continue in Prime Video</a>
+    <ol id="hoSteps"></ol>
     <button class="btn" id="hoClose">Back to RailVerse</button>
   </div>
 </div>
@@ -326,13 +323,24 @@ function pollOnboard(){
   const cb='__rvPos'+(++LIVE.tries),sc=document.createElement('script');
   const proto=location.protocol==='http:'?'http:':'https:';
   window[cb]=d=>{try{const sp=parseFloat(d.speed),la=parseFloat(d.latitude),lo=parseFloat(d.longitude);
-      if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;}catch(e){} cleanup();};
+      if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;updHeading(d);}catch(e){} cleanup();};
   function cleanup(){try{delete window[cb];}catch(e){window[cb]=undefined;} sc.remove();}
   sc.onerror=cleanup; setTimeout(()=>{if(window[cb])cleanup();},4000);
   sc.src=proto+'//www.ombord.info/api/jsonp/position/?callback='+cb+'&_='+Date.now();
   document.head.appendChild(sc);
 }
 setInterval(pollOnboard,3000);pollOnboard();
+const CURVE={on:true,yaw:0,rate:0,target:0,lastH:null,lastAt:0,prevPos:null};
+function wrap180(d){return ((d+540)%360)-180;}
+function bearing(a,b){const r=Math.PI/180,y=Math.sin((b[1]-a[1])*r)*Math.cos(b[0]*r),x=Math.cos(a[0]*r)*Math.sin(b[0]*r)-Math.sin(a[0]*r)*Math.cos(b[0]*r)*Math.cos((b[1]-a[1])*r);return (Math.atan2(y,x)/r+360)%360;}
+function updHeading(d){
+  let h=parseFloat(d.cmg);const now=Date.now(),pos=LIVE.lat?[LIVE.lat,LIVE.lon]:null;
+  if(!isFinite(h)&&pos&&CURVE.prevPos){const dm=Math.hypot((pos[0]-CURVE.prevPos[0])*111200,(pos[1]-CURVE.prevPos[1])*111200*Math.cos(pos[0]*Math.PI/180));if(dm>25)h=bearing(CURVE.prevPos,pos);else return;}
+  if(pos)CURVE.prevPos=pos;
+  if(!isFinite(h))return;
+  if(CURVE.lastH!==null){const dts=(now-CURVE.lastAt)/1000,dh=wrap180(h-CURVE.lastH);if(dts>0.5&&dts<20&&LIVE.speed>3&&Math.abs(dh)<45)CURVE.target=Math.max(-6,Math.min(6,dh/dts));}
+  CURVE.lastH=h;CURVE.lastAt=now;
+}
 function sceneSpeed(){return S.liveSpeed&&liveFresh()?LIVE.speed*3.6:S.speed;}
 
 /* ---------- Trafikverket (timetable, delays, tracks) ---------- */
@@ -454,6 +462,7 @@ dayG.add(makeRange(440,40,160,'#7f93ad',1,115));
 dayG.add(makeRange(330,15,80,'#4f7048',4,999));
 dayG.add(makeRange(240,3,36,'#355a33',9,999));
 const water=new THREE.Mesh(new THREE.CircleGeometry(470,64),basic('#5585b3'));water.rotation.x=-Math.PI/2;water.position.y=-9;dayG.add(water);
+const farD=new THREE.Group();dayG.children.slice(0,6).forEach(o=>farD.add(o));dayG.add(farD);
 const steel=basic('#a7afba'),sleeper=basic('#3a3c42');
 const deck=new THREE.Mesh(new THREE.BoxGeometry(5,0.6,800),basic('#7a7d82'));deck.position.set(0,-2.1,-300);dayG.add(deck);
 [-0.72,0.72].forEach(x=>{const r=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.12,800),steel);r.position.set(x,-1.7,-300);dayG.add(r);});
@@ -525,6 +534,7 @@ const moon=glowSprite('rgba(245,240,225,1)','rgba(180,190,230,0)',60);moon.posit
 nightG.add(makeRange(330,20,110,'#0e1636',4,999));
 nightG.add(makeRange(240,4,40,'#070b1c',9,999));
 const ng=new THREE.Mesh(new THREE.CircleGeometry(460,64),basic('#050817'));ng.rotation.x=-Math.PI/2;ng.position.y=-9;nightG.add(ng);
+const farN=new THREE.Group();nightG.children.slice(0,5).forEach(o=>farN.add(o));nightG.add(farN);
 addMover(nightG,new THREE.BoxGeometry(0.7,0.5,0.7),basic('#ffcf8a'),70,i=>({x:-40-Math.random()*180,y:-8.4,z:-320+Math.random()*380}),-320,60);
 addMover(nightG,new THREE.ConeGeometry(2,8,6),basic('#03050d'),140,i=>({x:-10-Math.random()*50,y:-5,z:-300+Math.random()*340,s:.7+Math.random()*.8}),-300,40);
 addMover(nightG,new THREE.BoxGeometry(0.16,7,0.16),basic('#1a2140'),12,i=>({x:-4,y:0.5,z:-270+i*23}),-270,6);
@@ -552,14 +562,23 @@ const shade=new THREE.Mesh(new THREE.SphereGeometry(0.07,20,10,0,Math.PI*2,0,Mat
 const lampGlow=glowSprite('rgba(255,215,160,.4)','rgba(255,190,120,0)',0.45);lampGlow.position.set(0.88,-0.33,-1.55);nightG.add(lampGlow);
 const blanket=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.28,1.4),basic('#e6ddcf'));blanket.position.set(0.25,-1.1,-0.95);nightG.add(blanket);
 const pillow=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.12,0.35),basic('#2c3354'));pillow.position.set(0.55,-0.92,-1.5);nightG.add(pillow);
+const dimMat=new THREE.MeshBasicMaterial({color:'#000000',transparent:true,opacity:.55,side:THREE.BackSide,depthWrite:false});
+const dimSphere=new THREE.Mesh(new THREE.SphereGeometry(0.6,24,12),dimMat);dimSphere.renderOrder=5;nightG.add(dimSphere);
 const orb=new THREE.Mesh(new THREE.SphereGeometry(0.09,32,16),new THREE.MeshBasicMaterial({color:'#ffe7c4',transparent:true,opacity:.9}));orb.position.set(0,-0.1,-1.5);nightG.add(orb);
 const orbGlow=glowSprite('rgba(255,225,180,.18)','rgba(255,210,160,0)',0.35);orb.add(orbGlow);
 
+/* --- YouTube sign (360 scene) --- */
+const ytSignTex=canvasTex(640,256,(c,w,h)=>{c.fillStyle='rgba(10,21,64,.92)';c.beginPath();c.moveTo(40,0);c.arcTo(w,0,w,h,40);c.arcTo(w,h,0,h,40);c.arcTo(0,h,0,0,40);c.arcTo(0,0,w,0,40);c.fill();
+  c.fillStyle='#ff5a26';c.beginPath();c.moveTo(60,80);c.lineTo(60,176);c.lineTo(140,128);c.closePath();c.fill();
+  c.fillStyle='#fff';c.font='bold 48px Helvetica, Arial';c.fillText('YouTube',170,115);c.fillStyle='#a9b4d6';c.font='30px Helvetica, Arial';c.fillText('Window views · point + trigger',170,165);});
+const ytSign=new THREE.Mesh(new THREE.PlaneGeometry(0.75,0.3),new THREE.MeshBasicMaterial({map:ytSignTex,transparent:true}));
+ytSign.position.set(0,0.42,-2.0);ytSign.lookAt(0,0.42,0);ytSign.renderOrder=6;
+
 /* --- OWN 360° --- */
 const panoG=new THREE.Group(); scene.add(panoG);
-const panoPh=canvasTex(2048,1024,(c,w,h)=>{c.fillStyle='#0a1540';c.fillRect(0,0,w,h);c.textAlign='center';for(let k=0;k<4;k++){c.fillStyle='#ff5a26';c.font='bold 60px Helvetica, Arial';c.fillText('360° & window views',w*(k+.5)/4,h/2-10);c.fillStyle='#a9b4d6';c.font='30px Helvetica, Arial';c.fillText('Add photos or videos in the 360° panel',w*(k+.5)/4,h/2+46);}});
+const panoPh=canvasTex(2048,1024,(c,w,h)=>{c.fillStyle='#0a1540';c.fillRect(0,0,w,h);c.textAlign='center';for(let k=0;k<4;k++){c.fillStyle='#ff5a26';c.font='bold 40px Helvetica, Arial';c.fillText('360° & window views',w*(k+.5)/4,h/2-10);c.fillStyle='#a9b4d6';c.font='22px Helvetica, Arial';c.fillText('Add photos or videos in the 360° panel',w*(k+.5)/4,h/2+46);}});
 const panoGeo=new THREE.SphereGeometry(60,64,32);panoGeo.scale(-1,1,1);
-const panoMat=new THREE.MeshBasicMaterial({map:panoPh});const panoPhMesh=new THREE.Mesh(panoGeo,panoMat);panoG.add(panoPhMesh);
+const panoMat=new THREE.MeshBasicMaterial({map:panoPh});const panoPhMesh=new THREE.Mesh(panoGeo,panoMat);panoG.add(panoPhMesh);panoG.add(ytSign);
 const panoSurround=new THREE.Mesh(new THREE.SphereGeometry(80,32,16),new THREE.MeshBasicMaterial({color:'#071033',side:THREE.BackSide}));panoSurround.visible=false;panoG.add(panoSurround);
 const clipHolder=new THREE.Group();panoG.add(clipHolder);
 camera.layers.enable(1); // preview shows the left-eye copy of stereo clips
@@ -612,6 +631,30 @@ const hudC=document.createElement('canvas');hudC.width=2048;hudC.height=880;cons
 const hudTex=new THREE.CanvasTexture(hudC);hudTex.anisotropy=renderer.capabilities.getMaxAnisotropy();hudTex.minFilter=THREE.LinearMipmapLinearFilter;
 const hud=new THREE.Mesh(new THREE.PlaneGeometry(1.15,0.495),new THREE.MeshBasicMaterial({map:hudTex,transparent:true,depthTest:false}));
 hud.renderOrder=10;hud.position.set(0,-0.42,-1.3);hud.rotation.x=-0.32;rig.add(hud);
+const mapC=document.createElement('canvas');mapC.width=1024;mapC.height=1024;const mctx=mapC.getContext('2d');
+const mapTex=new THREE.CanvasTexture(mapC);mapTex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+const mapMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.5),new THREE.MeshBasicMaterial({map:mapTex,transparent:true,depthTest:false}));
+mapMesh.renderOrder=11;mapMesh.position.set(0.87,0.0,0.1);mapMesh.rotation.y=-0.5;hud.add(mapMesh);
+function drawMap(st){
+  const pts=stations.map(x=>coordOf(x.name));if(stations.length<2||pts.some(p=>!p)){mapMesh.visible=false;return;}mapMesh.visible=true;
+  const c=mctx,W=512;c.setTransform(2,0,0,2,0,0);c.clearRect(0,0,W,W);rr(c,4,4,W-8,W-8,36);c.fillStyle='rgba(10,21,64,0.9)';c.fill();
+  let la0=90,la1=-90,lo0=180,lo1=-180;pts.forEach(p=>{la0=Math.min(la0,p[0]);la1=Math.max(la1,p[0]);lo0=Math.min(lo0,p[1]);lo1=Math.max(lo1,p[1]);});
+  const kx=Math.cos((la0+la1)/2*Math.PI/180),sw=(lo1-lo0)*kx,sh=la1-la0,sc=Math.min(380/(sw||1),330/(sh||1)),ox=(W-sw*sc)/2,oy=90+(330-sh*sc)/2;
+  const P=p=>[ox+(p[1]-lo0)*kx*sc,oy+(la1-p[0])*sc];
+  c.fillStyle='#fff';c.font='bold 26px '+F;c.textAlign='left';c.fillText('Route',36,58);
+  // where are we
+  let pos=null,live=false;
+  if(liveFresh()&&LIVE.lat){pos=[LIVE.lat,LIVE.lon];live=true;}
+  else if(st&&st.phase==='run'){const a=coordOf(st.prev.name),b=coordOf(st.next.name),u=Math.max(0,Math.min(1,(nowMin()-st.prev.t)/((st.next.t-st.prev.t)||1)));pos=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];}
+  else if(st)pos=st.phase==='done'?pts[pts.length-1]:pts[0];
+  c.font='bold 16px '+F;c.textAlign='right';c.fillStyle=live?'#ff5a26':'#a9b4d6';c.fillText(live?'LIVE GPS':'ESTIMATED',W-36,56);
+  c.lineCap='round';c.lineJoin='round';c.strokeStyle='#41539a';c.lineWidth=6;c.beginPath();pts.forEach((p,i)=>{const q=P(p);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]);});c.stroke();
+  const n=nowMin();
+  pts.forEach((p,i)=>{const q=P(p),passed=stations[i].t<=n;c.beginPath();c.arc(q[0],q[1],7,0,7);c.fillStyle=passed?'#fff':'#6f80c4';c.fill();
+    c.font='17px '+F;c.fillStyle='#d5dcf0';const right=q[0]<W/2;c.textAlign=right?'left':'right';c.fillText(stations[i].name,q[0]+(right?14:-14),q[1]+6);});
+  if(pos){const q=P(pos);c.beginPath();c.arc(q[0],q[1],20,0,7);c.fillStyle='rgba(255,90,38,.25)';c.fill();c.beginPath();c.arc(q[0],q[1],10,0,7);c.fillStyle='#ff5a26';c.fill();}
+  mapTex.needsUpdate=true;
+}
 const MODE_LABEL={day:'DAY · WATCH THE WORLD GO BY',cinema:'EVENING · PRIVATE CINEMA',night:'NIGHT · WIND DOWN',pano:'360° · WINDOW VIEWS'};
 const F='Helvetica, Arial, sans-serif';
 let breathText='';
@@ -625,7 +668,11 @@ function drawHUD(){
   c.fillText(ml+(S.sim?'  ·  SIM':''),W-44,70);
   const n=nowMin(),st=routeState(n),ev=activeEvent(n);
   c.textAlign='left';
-  if(S.mode==='night'&&breathText){c.fillStyle='#ffe7c4';c.font='bold 62px '+F;c.fillText(breathText,44,166);c.fillStyle='#a9b4d6';c.font='28px '+F;c.fillText(st&&st.phase==='run'?'Arriving '+st.next.name+' '+hhmm(st.next.t):'Sleep well',44,210);}
+  const lastSt=stations.length?stations[stations.length-1]:null;
+  const toFinal=!lastSt||!st?999:st.phase==='done'?0:st.phase==='run'?st.mins+(lastSt.t-st.next.t):lastSt.t+((liveInfo[lastSt.name]||{}).delay||0)-n;
+  WAKE.v=toFinal<=0?1:toFinal<=10?1-toFinal/10:0;WAKE.mins=toFinal;
+  if(S.mode==='night'&&WAKE.v>0&&toFinal>0){c.fillStyle='#ffe7c4';c.font='bold 58px '+F;c.fillText('Good morning',44,166);c.fillStyle='#a9b4d6';c.font='28px '+F;c.fillText('Arriving '+lastSt.name+' in '+minsText(toFinal),44,210);}
+  else if(S.mode==='night'&&breathText){c.fillStyle='#ffe7c4';c.font='bold 62px '+F;c.fillText(breathText,44,166);c.fillStyle='#a9b4d6';c.font='28px '+F;c.fillText(st&&st.phase==='run'?'Arriving '+st.next.name+' '+hhmm(st.next.t):'Sleep well',44,210);}
   else if(st){
     c.fillStyle='#fff';c.font='bold 56px '+F;
     const big=st.phase==='pre'?'Departing '+st.next.name:st.phase==='done'?'Arrived in '+st.next.name:st.next.name;
@@ -640,7 +687,10 @@ function drawHUD(){
   const live=S.liveSpeed&&liveFresh();
   c.fillStyle=live?'#ff5a26':'#a9b4d6';c.font='bold 30px '+F;c.fillText(Math.round(sceneSpeed())+' km/h',W-44,160);
   c.font='bold 16px '+F;c.fillText(live?'LIVE · TRAIN GPS':'SIMULATED',W-44,124);
+  const arriving=st&&st.phase==='run'&&st.mins<=2?st.next:null;ARR.cur=arriving;
   if(markFlash>0){c.font='bold 26px '+F;rr(c,44,232,330,46,23);c.fillStyle='#ffffff';c.fill();c.fillStyle='#0a1540';c.textAlign='left';c.fillText('Marker saved · '+clockNow(),66,264);}
+  else if(arriving){const li=liveInfo[arriving.name]||{};const txt='Arriving '+arriving.name+(li.track?' · track '+li.track:'')+' · '+minsText(st.mins);c.font='bold 26px '+F;const tw=Math.min(c.measureText(txt).width,W-140);
+    rr(c,44,232,tw+44,46,23);c.fillStyle='#ffffff';c.fill();c.fillStyle='#0a1540';c.textAlign='left';c.fillText(txt,66,264,W-140);}
   else if(ev){const d=ev.t-n;const txt=(d>0.5?'In '+minsText(d)+' · ':'Now · ')+ev.name;c.font='bold 26px '+F;const tw=Math.min(c.measureText(txt).width,W-140);
     rr(c,44,232,tw+44,46,23);c.fillStyle='#ff5a26';c.fill();c.fillStyle='#fff';c.textAlign='left';c.fillText(txt,66,264,W-140);}
   if(st){
@@ -652,7 +702,14 @@ function drawHUD(){
     c.beginPath();c.arc(xf,y,15,0,7);c.fillStyle='#ff5a26';c.fill();
     c.fillStyle='#a9b4d6';c.font='22px '+F;c.textAlign='left';c.fillText(stations[0].name,x0,y+50);c.textAlign='right';c.fillText(stations[stations.length-1].name,x1,y+50);
   }
-  hudTex.needsUpdate=true;
+  if(CHK.active){rr(c,4,4,W-8,H-8,40);c.fillStyle='rgba(10,21,64,0.97)';c.fill();
+    c.fillStyle='#fff';c.font='bold 46px '+F;c.textAlign='left';c.fillText('How do you feel right now?',44,92);
+    c.fillStyle='#a9b4d6';c.font='24px '+F;c.fillText('Motion sickness · stick ← → to choose · A/X confirm · B/Y skip',44,136);
+    const bw=172,gap=14,x0=(W-(bw*5+gap*4))/2;
+    CHK_LABELS.forEach((lb,i)=>{const x=x0+i*(bw+gap),on=CHK.sel===i+1;rr(c,x,170,bw,190,22);c.fillStyle=on?'#ff5a26':'#17275f';c.fill();
+      c.fillStyle='#fff';c.textAlign='center';c.font='bold 72px '+F;c.fillText(String(i+1),x+bw/2,262);c.font=(on?'bold ':'')+'22px '+F;c.fillText(lb,x+bw/2,322);});
+    c.textAlign='left';}
+  hudTex.needsUpdate=true;drawMap(st);
 }
 
 /* --- mode --- */
@@ -670,7 +727,9 @@ const ctls=[];
 function ctlRay(ctl){tmpM.identity().extractRotation(ctl.matrixWorld);const o=new THREE.Vector3().setFromMatrixPosition(ctl.matrixWorld);const d=new THREE.Vector3(0,0,-1).applyMatrix4(tmpM);return [o,d];}
 for(let i=0;i<2;i++){const ctl=renderer.xr.getController(i);
   const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-1)]),new THREE.LineBasicMaterial({color:'#ff5a26'}));line.scale.z=3;line.visible=false;ctl.add(line);ctl.userData.line=line;
-  ctl.addEventListener('selectstart',()=>{if(S.mode==='cinema'){const [o,d]=ctlRay(ctl);if(activateCinema(hitCinema(o,d)))return;}setMode(ORDER[(ORDER.indexOf(S.mode)+1)%ORDER.length]);});
+  ctl.addEventListener('selectstart',()=>{if(CHK.active)return;
+    if(S.mode==='cinema'){const [o,d]=ctlRay(ctl);if(activateCinema(hitCinema(o,d)))return;}
+    if(S.mode==='pano'){const [o,d]=ctlRay(ctl);ray.set(o,d);if(ray.intersectObject(ytSign,false).length){handoffYT();return;}}setMode(ORDER[(ORDER.indexOf(S.mode)+1)%ORDER.length]);});
   ctl.addEventListener('squeezestart',()=>setHud(!S.hud));rig.add(ctl);ctls.push(ctl);}
 
 /* --- preview look --- */
@@ -679,11 +738,19 @@ view.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};view.setP
 view.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*0.005;pitch+=(e.clientY-drag.y)*0.005;pitch=Math.max(-1.3,Math.min(1.3,pitch));drag={x:e.clientX,y:e.clientY};});
 view.addEventListener('pointerdown',e=>{view._down={x:e.clientX,y:e.clientY};});
 view.addEventListener('pointerup',e=>{drag=null;const d=view._down;if(!d||S.mode!=='cinema'||Math.hypot(e.clientX-d.x,e.clientY-d.y)>5)return;
-  const r=view.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);const h=ray.intersectObjects(cineTargets,false)[0];if(h)activateCinema(h.object);});view.addEventListener('pointercancel',()=>drag=null);
+  const r=view.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);const h=ray.intersectObjects(cineTargets,false)[0];if(h)activateCinema(h.object);});
+view.addEventListener('click',e=>{if(S.mode!=='pano')return;const r=view.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);if(ray.intersectObject(ytSign,false).length)handoffYT();});view.addEventListener('pointercancel',()=>drag=null);
 function resize(){if(renderer.xr.isPresenting)return;const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 window.addEventListener('resize',resize);
 
 /* --- loop --- */
+const CHK={vrTime:0,next:120,active:false,sel:1,since:0,stickHeld:false};
+const CHK_LABELS=['None','Slight','Noticeable','Queasy','Severe'];
+const ARR={cur:null,done:{}};const WAKE={v:0,mins:999,buzzed:false};
+function pulseAll(v,ms){const ses=renderer.xr.getSession&&renderer.xr.getSession();if(!ses)return;for(const src of ses.inputSources){const h=src.gamepad&&src.gamepad.hapticActuators&&src.gamepad.hapticActuators[0];if(h&&h.pulse)h.pulse(v,ms);}}
+function startCheckin(){CHK.active=true;CHK.sel=1;CHK.since=0;pulseAll(0.5,150);drawHUD();}
+function endCheckin(v){CHK.active=false;CHK.next=CHK.vrTime+600;
+  S.notes.unshift(Object.assign(snap(),{text:v?'Check-in: motion sickness '+v+'/5 ('+CHK_LABELS[v-1]+')':'Check-in skipped',checkin:v||''}));save();renderNotes();drawHUD();}
 const clock=new THREE.Clock();let hudT=0,markFlash=0;const padPrev={};
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
@@ -693,13 +760,28 @@ renderer.setAnimationLoop(()=>{
   const ses=renderer.xr.getSession&&renderer.xr.getSession();
   if(ses){for(const src of ses.inputSources){const gp=src.gamepad;if(!gp)continue;const k=src.handedness;
     const a=!!(gp.buttons[4]&&gp.buttons[4].pressed),b=!!(gp.buttons[5]&&gp.buttons[5].pressed),st=!!(gp.buttons[3]&&gp.buttons[3].pressed),prev=padPrev[k]||{};
+    const ax=gp.axes[2]||0;
+    if(CHK.active){
+      if(a&&!prev.a)endCheckin(CHK.sel); else if(b&&!prev.b)endCheckin(0);
+      if(Math.abs(ax)>0.6){if(!prev.held){CHK.sel=Math.max(1,Math.min(5,CHK.sel+(ax>0?1:-1)));drawHUD();}padPrev[k]={a,b,st,held:true};}else padPrev[k]={a,b,st,held:false};
+      continue;}
     if(a&&!prev.a)nextClip(); if(b&&!prev.b)togglePlay(); if(st&&!prev.st){addMarker();const h=gp.hapticActuators&&gp.hapticActuators[0];if(h&&h.pulse)h.pulse(0.7,120);} padPrev[k]={a,b,st};
-    const ax=gp.axes[2]||0;if(S.mode==='pano'&&Math.abs(ax)>0.25)setYaw(clipYaw-ax*60*dt);}}
-  ctls.forEach(c=>c.userData.line.visible=S.mode==='cinema'&&renderer.xr.isPresenting);
+    if(S.mode==='pano'&&Math.abs(ax)>0.25)setYaw(clipYaw-ax*60*dt);}}
+  if(renderer.xr.isPresenting){CHK.vrTime+=dt;if(!CHK.active&&CHK.vrTime>=CHK.next)startCheckin();}
+  if(CHK.active){CHK.since+=dt;if(CHK.since>60)endCheckin(0);}
+  // curves: far landscape turns with the real train
+  if(!liveFresh())CURVE.target=0;
+  CURVE.rate+=(CURVE.target-CURVE.rate)*Math.min(1,dt*1.5);
+  if(CURVE.on){CURVE.yaw+=CURVE.rate*dt;farD.rotation.y=farN.rotation.y=CURVE.yaw*Math.PI/180;}
+  dimMat.opacity=0.55*(1-WAKE.v);
+  ctls.forEach(c=>c.userData.line.visible=(S.mode==='cinema'||S.mode==='pano')&&renderer.xr.isPresenting);
+  if(S.mode==='pano'){let hov=false;if(renderer.xr.isPresenting)ctls.forEach(c=>{const [o,d]=ctlRay(c);ray.set(o,d);if(ray.intersectObject(ytSign,false).length)hov=true;});const tg=hov?1.1:1;ytSign.scale.setScalar(ytSign.scale.x+(tg-ytSign.scale.x)*0.3);}
   if(S.mode==='cinema'){let hov=null;if(renderer.xr.isPresenting)ctls.forEach(c=>{const [o,d]=ctlRay(c);hov=hitCinema(o,d)||hov;});
     tileMeshes.forEach(m=>{const tgt=(m===hov?1.12:1)*(m.userData.film===selFilm?1.06:1);m.scale.setScalar(m.scale.x+(tgt-m.scale.x)*0.3);});}
   if(markFlash>0)markFlash-=dt;
-  hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();}
+  hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();
+    if(ARR.cur&&!ARR.done[ARR.cur.name]){ARR.done[ARR.cur.name]=1;pulseAll(0.6,250);}
+    if(WAKE.v>0&&WAKE.mins>0&&!WAKE.buzzed){WAKE.buzzed=true;if(S.mode==='night')pulseAll(0.4,400);}}
   renderer.render(scene,camera);
 });
 
@@ -731,6 +813,8 @@ $('#ytList').addEventListener('click',e=>{const b=e.target.closest('[data-yt]');
 renderYt();
 
 /* ---------- UI wiring ---------- */
+function setCurve(on){CURVE.on=on;const b=$('#curveBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'Curves synced':'Curves off';}
+$('#curveBtn').onclick=()=>setCurve(!CURVE.on);
 function setHud(on){S.hud=on;hud.visible=on;const b=$('#hudBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'HUD on':'HUD off';}
 $('#hudBtn').onclick=()=>setHud(!S.hud);
 function setMoving(on){S.moving=on;$('#mvOn').setAttribute('aria-pressed',on);$('#mvOff').setAttribute('aria-pressed',!on);}
@@ -777,7 +861,7 @@ vrBtn.onclick=async()=>{
   if(session){session.end();return;}
   try{session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor']});
     await renderer.xr.setSession(session);
-    vrBtn.textContent='Exit VR';vrStatus.textContent='Trigger: scene · grip: HUD · A/X: next clip · B/Y: play/pause · stick: rotate';
+    vrBtn.textContent='Exit VR';vrStatus.textContent='Trigger: scene/select · grip: HUD · stick click: marker · A/X: next clip · B/Y: play/pause';
     session.addEventListener('end',()=>{session=null;vrBtn.textContent='Enter VR';vrStatus.textContent='VR ended.';resize();});
   }catch(err){session=null;vrStatus.textContent='VR could not start ('+(err.name||'error')+'). If this page is shown inside claude.ai, the frame may block VR; open the standalone file instead.';}
 };
@@ -806,7 +890,7 @@ $('#tests').addEventListener('click',e=>{
 });
 $('#tests').addEventListener('input',e=>{const card=e.target.closest('.test');const f=e.target.dataset.f;if(!card||!f)return;tstate(card.dataset.id)[f]=e.target.value;save();});
 const SCENE_NAME={day:'Day',cinema:'Cinema',night:'Night',pano:'360/Window'};
-function snap(){const f=liveFresh();return {time:clockNow(),iso:new Date().toISOString(),where:whereText(),speed:Math.round(sceneSpeed()),src:S.liveSpeed&&f?'live':'sim',lat:f&&LIVE.lat?+LIVE.lat.toFixed(5):'',lon:f&&LIVE.lon?+LIVE.lon.toFixed(5):'',scene:SCENE_NAME[S.mode],vr:renderer.xr.isPresenting?'yes':'no'};}
+function snap(){const f=liveFresh();return {time:clockNow(),iso:new Date().toISOString(),where:whereText(),speed:Math.round(sceneSpeed()),src:S.liveSpeed&&f?'live':'sim',lat:f&&LIVE.lat?+LIVE.lat.toFixed(5):'',lon:f&&LIVE.lon?+LIVE.lon.toFixed(5):'',scene:SCENE_NAME[S.mode],vr:renderer.xr.isPresenting?'yes':'no',turn:Math.round(CURVE.rate*10)/10,curves:CURVE.on?'synced':'off'};}
 function renderNotes(){$('#noteList').innerHTML=S.notes.map((n,i)=>'<li><span class="when">'+n.time+(n.where?'<br>'+esc(n.where):'')+(n.speed!==undefined?'<br>'+n.speed+' km/h · '+esc(n.scene||''):'')+'</span><span>'+(n.marker?'<span class="mk">VR marker</span><input type="text" id="mk-'+i+'" data-mk="'+i+'" value="'+esc(n.text)+'" placeholder="What did you feel here?" aria-label="Marker comment">':esc(n.text))+'</span></li>').join('')||'<li><span class="when">–</span><span class="note">No notes yet.</span></li>';}
 function addNote(){const v=$('#noteTxt').value.trim();if(!v)return;S.notes.unshift(Object.assign(snap(),{text:v}));$('#noteTxt').value='';save();renderNotes();}
 function addMarker(){S.notes.unshift(Object.assign(snap(),{text:'',marker:true}));markFlash=2.5;save();renderNotes();drawHUD();}
@@ -815,9 +899,15 @@ $('#noteList').addEventListener('input',e=>{const i=e.target.dataset.mk;if(i===u
 if(!S.track)S.track=[];
 setInterval(()=>{if(document.hidden&&!renderer.xr.isPresenting)return;S.track.push(snap());if(S.track.length>3000)S.track.shift();save();},30000);
 // handoff to Prime Video
-function handoff(f){S.notes.unshift(Object.assign(snap(),{text:'Cinema handoff to Prime Video · '+f.t}));save();renderNotes();
-  $('#hoFilm').textContent=f.t+' · '+f.g+' · '+f.d+' (mock title)';$('#handoff').hidden=false;
+function showHandoff(o){$('#hoEyebrow').textContent=o.eyebrow;$('#hoTitle').textContent=o.title;$('#hoFilm').textContent=o.sub;
+  const go=$('#hoGo');go.href=o.href;go.textContent=o.cta;$('#hoSteps').innerHTML=o.steps.map(x=>'<li>'+x+'</li>').join('');$('#handoff').hidden=false;
   const ses=renderer.xr.getSession&&renderer.xr.getSession();if(ses)ses.end().catch(()=>{});}
+function handoff(f){S.notes.unshift(Object.assign(snap(),{text:'Cinema handoff to Prime Video · '+f.t}));save();renderNotes();
+  showHandoff({eyebrow:'dream Cinema · handing over to',title:'Prime Video',sub:f.t+' · '+f.g+' · '+f.d+' (mock title)',href:'https://www.primevideo.com',cta:'Continue in Prime Video',
+    steps:['Downloaded film: press the <b>Meta button</b> and open the <b>Prime Video</b> app, then Downloads.','Streaming: the button opens Prime Video in the browser over the train Wi-Fi.','Come back here afterwards and log the session under Private cinema.']});}
+function handoffYT(){const list=S.yt.length?S.yt:['https://www.youtube.com'];S.notes.unshift(Object.assign(snap(),{text:'Window view handoff to YouTube'}));save();renderNotes();
+  showHandoff({eyebrow:'RailVerse · window view on',title:'YouTube',sub:list.length+(list.length===1?' saved clip':' saved clips'),href:list[0],cta:'Open on YouTube',
+    steps:list.slice(1).map((u,i)=>'<a href="'+esc(u)+'" target="_blank" rel="noopener" style="color:var(--fg)">Clip '+(i+2)+' · '+esc(ytId(u)||u)+'</a>').concat(['In YouTube, tap the <b>VR goggles</b> icon for 360° and VR180.','Come back here and log it under Live Train View.'])});}
 $('#hoClose').onclick=()=>{$('#handoff').hidden=true;};
 $('#filmGrid').innerHTML=FILMS.map((f,i)=>'<div class="film"><canvas class="poster" width="256" height="384" data-poster="'+i+'"></canvas><b>'+esc(f.t)+'</b><span>'+esc(f.g+' · '+f.d)+'</span><button class="btn small" data-film="'+i+'">▶ Play</button></div>').join('');
 document.querySelectorAll('[data-poster]').forEach(cv=>drawPoster(cv.getContext('2d'),256,384,FILMS[+cv.dataset.poster]));
@@ -827,10 +917,10 @@ if('serviceWorker' in navigator&&location.protocol==='https:'&&!/claude/.test(lo
 $('#noteBtn').onclick=addNote;$('#noteTxt').addEventListener('keydown',e=>{if(e.key==='Enter')addNote();});
 function csvCell(v){v=String(v==null?'':v);return /[,"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function buildCSV(){
-  const rows=[['Type','Test','Start','Stop','Position','Motion sickness','Tracking','Comfort','Experience','Wi-Fi','Battery %','Note','Speed km/h','Speed source','Lat','Lon','Scene','In VR','Timestamp']];
+  const rows=[['Type','Test','Start','Stop','Position','Motion sickness','Tracking','Comfort','Experience','Wi-Fi','Battery %','Note','Speed km/h','Speed source','Lat','Lon','Scene','In VR','Timestamp','Turn deg/s','Curves']];
   TESTS.forEach(T=>{const s=tstate(T.id);rows.push(['Test',T.t,s.start,s.end,s.where,s.sick||'',s.track||'',s.comfort||'',s.wow||'',s.wifi,s.batt,s.note]);});
-  const ext=n=>[n.speed,n.src,n.lat,n.lon,n.scene,n.vr,n.iso];
-  S.notes.slice().reverse().forEach(n=>rows.push([n.marker?'Marker':'Note','',n.time,'',n.where,'','','','','','',n.text].concat(ext(n))));
+  const ext=n=>[n.speed,n.src,n.lat,n.lon,n.scene,n.vr,n.iso,n.turn,n.curves];
+  S.notes.slice().reverse().forEach(n=>rows.push([n.marker?'Marker':n.checkin!==undefined?'Check-in':'Note','',n.time,'',n.where,n.checkin||'','','','','','',n.text].concat(ext(n))));
   (S.track||[]).forEach(n=>rows.push(['Track','',n.time,'',n.where,'','','','','','',''].concat(ext(n))));
   return rows.map(r=>r.map(csvCell).join(',')).join('\n');
 }
