@@ -888,6 +888,8 @@ function setSound(on){SND.on=on;if(on)initAudio();const b=$('#soundBtn');b.setAt
 $('#soundBtn').onclick=()=>setSound(!SND.on);
 function setPoi(on){POI.on=on;const b=$('#poiBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'Sights on':'Sights off';}
 $('#poiBtn').onclick=()=>setPoi(!POI.on);
+// new or reversed journey: let sights, arrival cards and wake-up fire again
+function resetJourneyFlags(){try{POI.seen={};POI.cur=null;ARR.done={};WAKE.buzzed=false;}catch(e){}}
 function setCurve(on){CURVE.on=on;const b=$('#curveBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'Curves synced':'Curves off';}
 $('#curveBtn').onclick=()=>setCurve(!CURVE.on);
 function setHud(on){S.hud=on;hud.visible=on;const b=$('#hudBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'HUD on':'HUD off';}
@@ -897,7 +899,7 @@ $('#mvOn').onclick=()=>setMoving(true);$('#mvOff').onclick=()=>setMoving(false);
 const sp_=$('#speed');sp_.value=S.speed;$('#speedVal').textContent=S.speed+' km/h';
 sp_.oninput=()=>{S.speed=+sp_.value;$('#speedVal').textContent=S.speed+' km/h';save();};
 const rt=$('#routeTxt'),pre=$('#preset');
-function loadPreset(){pre.value=S.preset;rt.value=S.routes[S.preset];parseRoute(rt.value);updTag();drawHUD();updRouteNow();}
+function loadPreset(){resetJourneyFlags();pre.value=S.preset;rt.value=S.routes[S.preset];parseRoute(rt.value);updTag();drawHUD();updRouteNow();}
 function updTag(){const tag=$('#routeTag');const same=rt.value.trim()===PRESETS[S.preset].text.trim();tag.hidden=!same;tag.textContent=PRESETS[S.preset].tag;}
 pre.onchange=()=>{S.preset=pre.value;S.sim=false;save();loadPreset();};
 rt.oninput=()=>{S.routes[S.preset]=rt.value;parseRoute(rt.value);updTag();save();drawHUD();updRouteNow();};
