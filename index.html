@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RailVerse Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: dream navy frame; 3D preview left, journey + media controls right, test log full width below */
+:root{
+  --deep:#071033; --bg:#0a1540; --panel:#101d50; --panel2:#17275f; --line:#26377a;
+  --fg:#ffffff; --muted:#a9b4d6; --accent:#ff5a26; --pill:#eceef3; --ink:#0a1540;
+  --warn:#ffb347;
+  --sans:"Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.45}
+.top{background:var(--deep)}
+.wrap{max-width:1360px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:18px}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.word{font-weight:700;font-size:34px;letter-spacing:-.035em;line-height:1}
+.rv{font-weight:700;font-size:22px;color:var(--accent)}
+.sub{color:var(--muted);font-size:14px}
+.tag-line{font-size:15px;color:var(--fg)}
+.tag-line b{font-weight:700}
+.eyebrow{font-size:12px;color:var(--muted)}
+main.wrap{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;padding-block:24px}
+@media (max-width:980px){main.wrap{grid-template-columns:1fr}}
+.stage{min-width:0;display:flex;flex-direction:column;gap:14px}
+.view{position:relative;background:#000;border-radius:16px;overflow:hidden;aspect-ratio:16/9;max-width:100%;touch-action:none;cursor:grab}
+.view canvas{display:block;width:100%!important;height:100%!important}
+.view .hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:#fff;background:rgba(7,16,51,.7);padding:5px 10px;border-radius:999px;pointer-events:none}
+.vrrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--panel2);color:var(--fg);padding:12px 18px;border-radius:999px;min-height:46px;cursor:pointer}
+.btn:hover{border-color:#41539a}
+.btn:focus-visible,.chip:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,.rate button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;padding:14px 28px}
+.btn.primary:disabled{opacity:.45;cursor:not-allowed}
+.btn.small{padding:8px 14px;min-height:38px;font-size:13px}
+.btn.danger{color:#ffb4a0}
+.status{font-size:13px;color:var(--muted);flex:1;min-width:200px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font:inherit;font-size:14px;border:none;background:var(--panel2);color:var(--muted);padding:10px 16px;border-radius:999px;min-height:42px;cursor:pointer}
+.chip b{color:var(--fg);font-weight:700}
+.chip[aria-pressed="true"]{background:var(--pill);color:var(--ink)}
+.chip[aria-pressed="true"] b{color:var(--ink)}
+.panel{background:var(--panel);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+h2{margin:0;font-size:18px;font-weight:700}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+label{font-size:13px;color:var(--muted)}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--accent)}
+textarea,input[type=text],input[type=number],input[type=password],select{font:inherit;background:var(--deep);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+select{max-width:100%}
+textarea{width:100%;resize:vertical}
+#routeTxt{font-family:var(--mono);font-size:13px;min-height:200px;line-height:1.6}
+.note{font-size:12px;color:var(--muted);margin:0}
+code{font-family:var(--mono);font-size:12px;color:var(--fg)}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--pill);color:var(--ink)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px;margin:0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-variant-numeric:tabular-nums}
+.file{display:flex;flex-direction:column;gap:6px}
+.file input{font-size:13px;color:var(--muted);max-width:100%}
+section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
+.loghead{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.loghead h2{font-size:26px;margin-top:4px}
+.tests{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.test{background:var(--panel);border:2px solid transparent;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.test.running{border-color:var(--accent)}
+.test h3{margin:0;font-size:16px}
+.test .how{font-size:13px;color:var(--muted);margin:0}
+.times{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-height:1.4em}
+.rate{display:grid;grid-template-columns:104px 1fr;align-items:center;gap:8px}
+.rate .scale{display:flex;gap:4px}
+.rate button{flex:1;font:inherit;font-weight:700;font-size:13px;min-height:36px;border-radius:8px;border:1px solid var(--line);background:var(--deep);color:var(--muted);cursor:pointer}
+.rate button[aria-pressed="true"]{background:var(--pill);color:var(--ink);border-color:var(--pill)}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meta select,.meta input{width:100%}
+.notes ul{list-style:none;margin:0;padding:0}
+.notes li{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.notes .when{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
+#csv{font-family:var(--mono);font-size:12px;min-height:120px}
+.clips{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.clips:empty{display:none}
+.clips button{width:100%;text-align:left;font:inherit;font-size:13px;background:var(--deep);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px}
+.clips button span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.clips button .k{color:var(--muted);flex:none}
+.clips button[aria-pressed="true"]{border-color:var(--accent)}
+.clips a{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--fg);text-decoration:none;background:var(--deep);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.clips a:hover{border-color:var(--accent)}
+.clips a span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.clips .yt{display:flex;gap:6px}.clips .yt a{flex:1;min-width:0}
+.clips .yt button{width:auto;flex:none}
+.meta .btn{min-height:38px}
+.tag.live{background:var(--accent);color:#fff}
+.films{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.film{display:flex;flex-direction:column;gap:6px;min-width:0}
+.film .poster{aspect-ratio:2/3;border-radius:10px;max-width:100%;display:block;width:100%;background:var(--deep)}
+.film b{font-size:13px;line-height:1.25}
+.film span{font-size:12px;color:var(--muted)}
+.film .btn{min-height:34px;padding:6px 10px;font-size:12px}
+.notes input{width:100%;font-size:13px;padding:6px 8px}
+.notes .mk{color:var(--accent);font-weight:700;font-size:12px}
+.handoff{position:fixed;inset:0;z-index:50;background:rgba(7,16,51,.94);display:flex;align-items:center;justify-content:center;padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.handoff .card{background:var(--panel);border-radius:20px;padding:28px;max-width:520px;width:100%;display:flex;flex-direction:column;gap:14px}
+.handoff h2{font-size:26px}
+.handoff .go{display:block;text-align:center;text-decoration:none;background:var(--accent);color:#fff;font-weight:700;font-size:18px;padding:16px;border-radius:999px}
+.handoff ol{margin:0;padding-left:20px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top"><div class="wrap">
+  <div class="brand"><span class="word">dream</span><span class="rv">RailVerse</span><span class="sub">Onboard prototype · Meta Quest 2</span></div>
+  <div class="tag-line">Make travel time <b>your time</b></div>
+</div></header>
+
+<main class="wrap">
+  <div class="stage">
+    <div class="view" id="view"><div class="hint">Drag to look around · In VR: trigger = scene, grip = HUD, A/X = next clip</div></div>
+    <div class="vrrow">
+      <button class="btn primary" id="vrBtn" disabled>Enter VR</button>
+      <div class="status" id="vrStatus">Checking WebXR…</div>
+    </div>
+    <div class="chips" role="group" aria-label="Scene">
+      <button class="chip" data-mode="day" aria-pressed="true"><b>Day</b> · Live Train View</button>
+      <button class="chip" data-mode="cinema" aria-pressed="false"><b>Evening</b> · Private cinema</button>
+      <button class="chip" data-mode="night" aria-pressed="false"><b>Night</b> · Wind down</button>
+      <button class="chip" data-mode="pano" aria-pressed="false"><b>360°</b> · Window views</button>
+    </div>
+    <div class="panel">
+      <div class="chips" role="group" aria-label="Motion and HUD">
+        <button class="chip" id="mvOn" aria-pressed="true">Scene moves</button>
+        <button class="chip" id="mvOff" aria-pressed="false">Still</button>
+        <button class="chip" id="hudBtn" aria-pressed="true">HUD on</button>
+      </div>
+      <div class="row">
+        <label for="speed">Scene speed</label>
+        <input type="range" id="speed" min="40" max="250" step="10" value="200">
+        <span id="speedVal" style="font-variant-numeric:tabular-nums;min-width:72px">200 km/h</span>
+      </div>
+      <p class="note">Switch between "moves" and "still" on the same stretch. Does your body agree with your eyes? That is the core question for Live Train View.</p>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Journey</h2><span class="tag" id="routeTag">Illustrative</span></div>
+      <select id="preset" aria-label="Journey preset">
+        <option value="sj">SJ 159 · Västerås → Skövde (live)</option>
+        <option value="dream">dream Night · Amsterdam → München</option>
+        <option value="trip">Custom trip</option>
+      </select>
+      <textarea id="routeTxt" spellcheck="false" aria-label="Journey, one stop per line"></textarea>
+      <p class="note">One line per stop: <code>HH:MM Name</code>. Onboard moments: <code>HH:MM ! Text</code>. Times after midnight roll over automatically.</p>
+      <div class="row">
+        <button class="btn small" id="simBtn">Simulate journey (60×)</button>
+        <button class="btn small" id="realBtn">Use real time</button>
+      </div>
+      <dl class="kv" id="routeNow"></dl>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Live train data</h2><span class="tag" id="liveTag">Offline</span></div>
+      <dl class="kv" id="liveNow"></dl>
+      <div class="chips" role="group" aria-label="Scene speed source">
+        <button class="chip" id="liveSpdOn" aria-pressed="true">Scene uses train speed</button>
+        <button class="chip" id="liveSpdOff" aria-pressed="false">Use slider</button>
+      </div>
+      <div class="meta">
+        <input type="text" id="tvTrain" placeholder="Train no." aria-label="Train number" inputmode="numeric">
+        <button class="btn small" id="tvSwap">Swap direction</button>
+        <input type="text" id="tvFrom" placeholder="From" aria-label="From station">
+        <input type="text" id="tvTo" placeholder="To" aria-label="To station">
+      </div>
+      <input type="password" id="tvKey" placeholder="Trafikverket API key (optional)" aria-label="Trafikverket API key" autocomplete="off">
+      <div class="row"><button class="btn small" id="tvLoad">Load live timetable</button><span class="note" id="tvStatus"></span></div>
+      <p class="note">Speed and GPS come from the train's onboard Wi-Fi portal and only work when connected to it. The Trafikverket key adds real stops, delays and track numbers. The key is kept on this device only.</p>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2>360° &amp; window views</h2><span class="tag" id="clipCount">0 clips</span></div>
+      <div class="file">
+        <label for="panoFile">Add 360° photos/videos, phone panoramas or window recordings (several at once)</label>
+        <input type="file" id="panoFile" accept="image/*,video/*" multiple>
+      </div>
+      <ul class="clips" id="clipList"></ul>
+      <div class="meta">
+        <select id="fmtSel" aria-label="Projection">
+          <option value="auto">Projection: auto</option>
+          <option value="360">360° sphere</option>
+          <option value="180">180° (VR180)</option>
+          <option value="pano">Phone panorama</option>
+          <option value="window">Window view (flat video)</option>
+        </select>
+        <select id="stereoSel" aria-label="Stereo layout">
+          <option value="auto">Stereo: auto</option>
+          <option value="mono">Mono</option>
+          <option value="tb">3D top-bottom</option>
+          <option value="sbs">3D side-by-side</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="yawRange">Rotate view</label>
+        <input type="range" id="yawRange" min="-180" max="180" step="5" value="0">
+        <span id="yawVal" style="font-variant-numeric:tabular-nums;min-width:44px">0°</span>
+      </div>
+      <p class="note">Auto picks the projection from the shape: 2:1 is a full sphere, 1:1 is 3D top-bottom, very wide is a phone panorama, 16:9 becomes a curved window. In VR: <b>A/X</b> next clip, <b>B/Y</b> play/pause, <b>thumbstick</b> rotates.</p>
+    </div>
+    <div class="panel">
+      <h2>YouTube window views</h2>
+      <ul class="clips" id="ytList"></ul>
+      <div class="row">
+        <input type="text" id="ytUrl" placeholder="Paste a YouTube link" aria-label="YouTube link" style="flex:1;min-width:200px">
+        <button class="btn small" id="ytAdd">Add</button>
+      </div>
+      <p class="note">Opens in YouTube on the headset, where 360° and VR180 play natively. Treat it as the window feed, then come back here and log it under Live Train View.</p>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2>dream Cinema</h2><span class="tag">Mock catalogue</span></div>
+      <div class="films" id="filmGrid"></div>
+      <p class="note">Titles are mock-ups. Play always hands over to Prime Video, where you watch the real film (download it before departure). In VR, point at a poster and pull the trigger.</p>
+    </div>
+    <div class="panel">
+      <h2>Private cinema fallback</h2>
+      <div class="file">
+        <label for="movieFile">Local film (if train Wi-Fi can't carry Netflix)</label>
+        <input type="file" id="movieFile" accept="video/*">
+      </div>
+      <div class="row"><button class="btn small" id="playBtn">Play / pause video</button></div>
+      <p class="note">Files stay on the headset and are never uploaded. Once the page is open, no Wi-Fi is needed.</p>
+    </div>
+  </div>
+
+  <section class="log">
+    <div class="loghead">
+      <div><div class="eyebrow">Field test protocol</div><h2>Test log</h2></div>
+      <div class="row">
+        <button class="btn small" id="dlBtn">Download CSV</button>
+        <button class="btn small" id="exportBtn">Show CSV</button>
+        <button class="btn small danger" id="clearBtn">Clear log</button>
+      </div>
+    </div>
+    <div class="tests" id="tests"></div>
+    <div class="panel notes">
+      <h2>Quick notes</h2>
+      <div class="row">
+        <input type="text" id="noteTxt" placeholder="e.g. tracking jumped in the curve, conductor asked what I was doing" style="flex:1;min-width:220px">
+        <button class="btn small" id="noteBtn">Add</button>
+      </div>
+      <ul id="noteList"></ul>
+      <p class="note">Each note is stamped with time, position and speed. In VR, <b>click the thumbstick</b> to drop a marker ("I felt something here") and add the comment afterwards. Speed and position are also logged every 30 s for the journey chart.</p>
+    </div>
+    <div class="panel" id="csvPanel" hidden>
+      <div class="row" style="justify-content:space-between"><h2>CSV</h2><button class="btn small" id="copyBtn">Copy</button></div>
+      <textarea id="csv" readonly aria-label="CSV export"></textarea>
+    </div>
+  </section>
+</main>
+<div class="handoff" id="handoff" hidden>
+  <div class="card" role="dialog" aria-labelledby="hoTitle">
+    <div class="eyebrow">dream Cinema · handing over to</div>
+    <h2 id="hoTitle">Prime Video</h2>
+    <p class="note" id="hoFilm" style="font-size:14px"></p>
+    <a class="go" href="https://www.primevideo.com" target="_blank" rel="noopener">Continue in Prime Video</a>
+    <ol>
+      <li>Downloaded film: press the <b>Meta button</b> and open the <b>Prime Video</b> app, then Downloads.</li>
+      <li>Streaming: the button opens Prime Video in the browser over the train Wi-Fi.</li>
+      <li>Come back here afterwards and log the session under Private cinema.</li>
+    </ol>
+    <button class="btn" id="hoClose">Back to RailVerse</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const KEY='railverse-proto-v3';
+const PRESETS={
+ sj:{tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
+06:30 Köping
+06:41 Arboga
+07:05 Örebro C
+07:24 Hallsberg
+07:48 Laxå
+08:08 Töreboda
+08:27 Skövde C`},
+ dream:{tag:'Illustrative',text:`21:05 Amsterdam Centraal
+21:35 Utrecht Centraal
+22:50 Arnhem Centraal
+00:05 Düsseldorf Hbf
+01:50 Central hub
+02:10 ! Coupling at Central hub · you won't feel a thing
+04:40 Nürnberg Hbf
+06:45 München Hbf`},
+ trip:{tag:'Example · replace with your trip',text:`08:12 Stockholm C
+08:52 Uppsala C
+09:40 Gävle C
+10:42 Hudiksvall
+11:28 Sundsvall C
+12:15 Härnösand C
+13:30 Örnsköldsvik C`}
+};
+const TESTS=[
+ {id:'base',t:'Baseline: seated with headset',h:'Travel Mode on. Sit 15 min in the menu or the Day scene set to Still. How do seat, arms and neighbours work out?'},
+ {id:'ltv',t:'Live Train View',h:'Day scene driven by the real train speed (check the Live tag), then a YouTube window view and your own window recording. Which feels most like a truth about the route?'},
+ {id:'mismatch',t:'Motion vs still',h:'Switch between "moves" and "still" in the Day scene. Which feels better when the train curves and brakes?'},
+ {id:'cinema',t:'Private cinema · Netflix',h:'Open netflix.com in the Quest browser on the train Wi-Fi and watch at least 20 min. Log buffering, picture quality and how long comfort holds. (Fallback: load a local film under Media.)'},
+ {id:'night',t:'Wind down',h:'Night cabin scene. Follow the breathing light for 5 min. Does it calm you in a moving train?'},
+ {id:'card',t:'Cardboard + phone',h:'If you have a viewer: open this page on your phone. How close does the entry tier get?'}
+];
+
+/* ---------- state ---------- */
+let S={mode:'day',moving:true,speed:200,hud:true,preset:'sj',routes:{sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},liveSpeed:true,tv:{train:'159',from:'Västerås',to:'Skövde',key:''},yt:['https://www.youtube.com/watch?v=I_00MTHuXXE'],sim:false,simReal:0,tests:{},notes:[]};
+try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){S=Object.assign(S,d,{sim:false});S.routes=Object.assign({sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},d.routes||{});}}catch(e){}
+if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
+function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt}));}catch(e){}}
+
+/* ---------- live onboard data (train Wi-Fi portal) ---------- */
+const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0};
+function liveFresh(){return Date.now()-LIVE.at<15000;}
+function pollOnboard(){
+  const cb='__rvPos'+(++LIVE.tries),sc=document.createElement('script');
+  const proto=location.protocol==='http:'?'http:':'https:';
+  window[cb]=d=>{try{const sp=parseFloat(d.speed),la=parseFloat(d.latitude),lo=parseFloat(d.longitude);
+      if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;}catch(e){} cleanup();};
+  function cleanup(){try{delete window[cb];}catch(e){window[cb]=undefined;} sc.remove();}
+  sc.onerror=cleanup; setTimeout(()=>{if(window[cb])cleanup();},4000);
+  sc.src=proto+'//www.ombord.info/api/jsonp/position/?callback='+cb+'&_='+Date.now();
+  document.head.appendChild(sc);
+}
+setInterval(pollOnboard,3000);pollOnboard();
+function sceneSpeed(){return S.liveSpeed&&liveFresh()?LIVE.speed*3.6:S.speed;}
+
+/* ---------- Trafikverket (timetable, delays, tracks) ---------- */
+async function tvQuery(xml){
+  const r=await fetch('https://api.trafikinfo.trafikverket.se/v2/data.json',{method:'POST',headers:{'Content-Type':'text/xml'},body:xml});
+  if(!r.ok)throw new Error('HTTP '+r.status);return (await r.json()).RESPONSE.RESULT[0];
+}
+function xmlEsc(v){return String(v).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
+async function loadTrafikverket(){
+  const tv=S.tv,st=$('#tvStatus');
+  if(!tv.key){st.textContent='Add an API key first.';return;}
+  st.textContent='Loading…';
+  try{
+    const login='<LOGIN authenticationkey="'+xmlEsc(tv.key)+'"/>';
+    const ann=(await tvQuery('<REQUEST>'+login+'<QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation"><FILTER><AND><EQ name="AdvertisedTrainIdent" value="'+xmlEsc(tv.train)+'"/><EQ name="Advertised" value="true"/><GT name="AdvertisedTimeAtLocation" value="$dateadd(-06:00:00)"/><LT name="AdvertisedTimeAtLocation" value="$dateadd(20:00:00)"/></AND></FILTER><INCLUDE>ActivityType</INCLUDE><INCLUDE>LocationSignature</INCLUDE><INCLUDE>AdvertisedTimeAtLocation</INCLUDE><INCLUDE>EstimatedTimeAtLocation</INCLUDE><INCLUDE>TimeAtLocation</INCLUDE><INCLUDE>TrackAtLocation</INCLUDE><INCLUDE>Canceled</INCLUDE></QUERY></REQUEST>')).TrainAnnouncement||[];
+    if(!ann.length)throw new Error('No announcements for train '+tv.train+' in the next 20 h');
+    const sigs=[...new Set(ann.map(a=>a.LocationSignature))];
+    const stRes=(await tvQuery('<REQUEST>'+login+'<QUERY objecttype="TrainStation" schemaversion="1.4"><FILTER><OR>'+sigs.map(g=>'<EQ name="LocationSignature" value="'+xmlEsc(g)+'"/>').join('')+'</OR></FILTER><INCLUDE>LocationSignature</INCLUDE><INCLUDE>AdvertisedLocationName</INCLUDE><INCLUDE>Geometry.WGS84</INCLUDE></QUERY></REQUEST>')).TrainStation||[];
+    const nm={},geo={};stRes.forEach(x=>{nm[x.LocationSignature]=x.AdvertisedLocationName;const m=x.Geometry&&/POINT \(([\d.]+) ([\d.]+)\)/.exec(x.Geometry.WGS84);if(m)geo[x.LocationSignature]=[+m[2],+m[1]];});
+    // one row per station: use departure where present, arrival for the last stop
+    const rows=[],seen={};
+    ann.forEach(a=>{const g=a.LocationSignature;let r=seen[g];if(!r){r=seen[g]={sig:g,name:nm[g]||g};rows.push(r);}r[a.ActivityType==='Avgang'?'dep':'arr']=a;});
+    const norm=x=>x.toLowerCase();
+    let i0=rows.findIndex(r=>norm(r.name).includes(norm(tv.from))),i1=rows.findIndex(r=>norm(r.name).includes(norm(tv.to)));
+    if(i0<0)i0=0; if(i1<0||i1<=i0)i1=rows.length-1;
+    const part=rows.slice(i0,i1+1);
+    const lines=part.map((r,k)=>{const a=(k===part.length-1?r.arr:r.dep)||r.dep||r.arr;
+      const adv=new Date(a.AdvertisedTimeAtLocation),est=new Date(a.TimeAtLocation||a.EstimatedTimeAtLocation||a.AdvertisedTimeAtLocation);
+      liveInfo[r.name]={delay:Math.round((est-adv)/60000),track:a.TrackAtLocation||'',cancel:!!a.Canceled,lat:geo[r.sig]&&geo[r.sig][0],lon:geo[r.sig]&&geo[r.sig][1]};
+      return String(adv.getHours()).padStart(2,'0')+':'+String(adv.getMinutes()).padStart(2,'0')+' '+r.name;});
+    S.preset='sj';S.routes.sj=lines.join('\n');S.tvLoadedAt=Date.now();save();loadPreset();
+    st.textContent='Loaded '+part.length+' stops · '+new Date().toLocaleTimeString().slice(0,5);
+  }catch(e){st.textContent='Could not load: '+e.message+'. Check the key, train number and connection.';}
+}
+
+/* ---------- route ---------- */
+let stations=[],events=[];
+// approximate station coordinates; Trafikverket data overrides these when loaded
+const COORDS={'västerås':[59.6087,16.5513],'köping':[59.5131,15.9939],'arboga':[59.3940,15.8395],'örebro':[59.2797,15.2116],'hallsberg':[59.0663,15.1097],'laxå':[58.9862,14.6196],'hova':[58.8604,14.2153],'töreboda':[58.7069,14.1226],'skövde':[58.3906,13.8456]};
+const liveInfo={};// name -> {delay, track, lat, lon}
+function coordOf(name){const li=liveInfo[name];if(li&&li.lat)return [li.lat,li.lon];const k=name.toLowerCase().replace(/\s+(c|central|centralstation)$/,'').trim();return COORDS[k]||null;}
+function parseRoute(txt){
+  let prev=-1,off=0;stations=[];events=[];
+  txt.split('\n').forEach(l=>{l=l.trim();const m=l.match(/^(\d{1,2})[:.](\d{2})\s+(!\s*)?(.+)$/);if(!m)return;
+    let t=+m[1]*60+ +m[2]+off; if(prev>=0&&t<prev){off+=1440;t+=1440;} prev=t;
+    (m[3]?events:stations).push({t,name:m[4].trim()});});
+}
+// project a GPS fix onto the stop sequence; returns {i,u} = segment index and 0..1 along it
+function gpsProgress(lat,lon){
+  const pts=stations.map(s=>coordOf(s.name));if(pts.some(p=>!p)||pts.length<2)return null;
+  const kx=Math.cos(lat*Math.PI/180);let best=null;
+  for(let i=0;i<pts.length-1;i++){const ax=pts[i][1]*kx,ay=pts[i][0],bx=pts[i+1][1]*kx,by=pts[i+1][0],px=lon*kx,py=lat;
+    const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy||1e-9;let u=((px-ax)*dx+(py-ay)*dy)/L2;u=Math.max(0,Math.min(1,u));
+    const d=Math.hypot(ax+u*dx-px,ay+u*dy-py);if(!best||d<best.d)best={i,u,d,segKm:Math.sqrt(L2)*111.2};}
+  return best&&best.d*111.2<25?best:null;
+}
+function nowMin(){
+  if(S.sim&&stations.length) return stations[0].t-3+(Date.now()-S.simReal)/1000;
+  const d=new Date(); let n=d.getHours()*60+d.getMinutes()+d.getSeconds()/60;
+  if(stations.length&&stations[stations.length-1].t>=1440&&n<stations[0].t-360) n+=1440;
+  return n;
+}
+function hhmm(m){m=((Math.floor(m)%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+function routeState(n){
+  if(stations.length<2) return null;
+  if(!S.sim&&liveFresh()&&LIVE.lat){const g=gpsProgress(LIVE.lat,LIVE.lon);
+    if(g){const a=stations[g.i],b=stations[g.i+1],first=stations[0].t,last=stations[stations.length-1].t;
+      let mins=b.t+(liveInfo[b.name]&&liveInfo[b.name].delay||0)-n;
+      if(LIVE.speed>8){const est=(1-g.u)*g.segKm/(LIVE.speed*3.6)*60;mins=est;}
+      if(g.i===stations.length-2&&g.u>0.995)return {phase:'done',next:b,mins:0,frac:1,gps:true};
+      if(g.i===0&&g.u<0.005&&LIVE.speed<2&&n<first)return {phase:'pre',next:a,mins:first-n,frac:0,gps:true};
+      return {phase:'run',prev:a,next:b,mins:Math.max(0,mins),frac:(a.t+g.u*(b.t-a.t)-first)/(last-first),gps:true};}}
+  const first=stations[0].t,last=stations[stations.length-1].t;
+  if(n<first) return {phase:'pre',next:stations[0],mins:first-n,frac:0};
+  if(n>=last) return {phase:'done',next:stations[stations.length-1],mins:0,frac:1};
+  let i=0; while(i<stations.length-1&&stations[i+1].t<=n) i++;
+  return {phase:'run',prev:stations[i],next:stations[i+1],mins:stations[i+1].t-n,frac:(n-first)/(last-first)};
+}
+function activeEvent(n){return events.find(e=>n>=e.t-30&&n<=e.t+5)||null;}
+function whereText(){const st=routeState(nowMin());if(!st)return '';if(st.phase==='pre')return 'before departure';if(st.phase==='done')return 'arrived';return st.prev.name+' → '+st.next.name;}
+function minsText(m){m=Math.max(0,Math.ceil(m));return m>=60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min';}
+
+/* ---------- three ---------- */
+const view=$('#view');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.xr.enabled=true;
+renderer.xr.setReferenceSpaceType('local');
+view.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(72,16/9,0.05,900);
+const rig=new THREE.Group(); rig.add(camera); scene.add(rig);
+const dummy=new THREE.Object3D();
+const basic=c=>new THREE.MeshBasicMaterial({color:c});
+function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);return new THREE.CanvasTexture(c);}
+function glowSprite(inner,outer,scale){const t=canvasTex(256,256,(c)=>{const g=c.createRadialGradient(128,128,0,128,128,128);g.addColorStop(0,inner);g.addColorStop(.25,inner);g.addColorStop(1,outer);c.fillStyle=g;c.fillRect(0,0,256,256);});const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false,blending:THREE.AdditiveBlending}));s.scale.set(scale,scale,1);return s;}
+
+function ridge(a,seed){let v=0,amp=1,f=1;for(let o=0;o<5;o++){v+=amp*(1-Math.abs(Math.sin(a*f*3+seed*1.7+o*2.3)));amp*=.5;f*=2.13;}return v/1.94;}
+function makeRange(r,minH,maxH,col,seed,snowLine){
+  const segs=240,pos=[],cols=[],idx=[];const c=new THREE.Color(col),snow=new THREE.Color('#f2f5fa'),tmp=new THREE.Color();
+  for(let i=0;i<=segs;i++){const a=i/segs*Math.PI*2;const h=minH+(maxH-minH)*Math.pow(ridge(a,seed),2.2)*(0.85+0.3*Math.random());
+    const x=Math.cos(a)*r,z=Math.sin(a)*r;pos.push(x,-30,z,x,h,z);cols.push(c.r,c.g,c.b);tmp.copy(c).lerp(snow,h>snowLine?0.8:0.12);cols.push(tmp.r,tmp.g,tmp.b);
+    if(i<segs){const b=i*2;idx.push(b,b+1,b+2,b+1,b+3,b+2);}}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));g.setIndex(idx);
+  return new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
+}
+const movers=[];
+function updMover(mv,dz){const span=mv.zMax-mv.zMin;mv.items.forEach((it,i)=>{it.z+=dz;if(it.z>mv.zMax)it.z-=span;dummy.position.set(it.x,it.y,it.z);dummy.rotation.set(0,it.ry||0,0);dummy.scale.setScalar(it.s||1);dummy.updateMatrix();mv.m.setMatrixAt(i,dummy.matrix);});mv.m.instanceMatrix.needsUpdate=true;}
+function addMover(group,geo,mat,count,gen,zMin,zMax){const m=new THREE.InstancedMesh(geo,mat,count);const items=[];for(let i=0;i<count;i++)items.push(gen(i));group.add(m);const mv={m,items,zMin,zMax,group};movers.push(mv);updMover(mv,0);return mv;}
+
+/* --- DAY: watch the world go by --- */
+const dayG=new THREE.Group(); scene.add(dayG);
+const skyTex=canvasTex(4,512,(c,w,h)=>{const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,'#2f5fa8');g.addColorStop(.38,'#79a3d6');g.addColorStop(.5,'#d8e6f2');g.addColorStop(.52,'#9fb6c9');g.addColorStop(1,'#3d5a46');c.fillStyle=g;c.fillRect(0,0,w,h);});
+dayG.add(new THREE.Mesh(new THREE.SphereGeometry(520,48,24),new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide,fog:false})));
+const sun=glowSprite('rgba(255,252,240,1)','rgba(255,240,210,0)',140);sun.position.set(160,190,-380);dayG.add(sun);
+dayG.add(makeRange(440,40,160,'#7f93ad',1,115));
+dayG.add(makeRange(330,15,80,'#4f7048',4,999));
+dayG.add(makeRange(240,3,36,'#355a33',9,999));
+const water=new THREE.Mesh(new THREE.CircleGeometry(470,64),basic('#5585b3'));water.rotation.x=-Math.PI/2;water.position.y=-9;dayG.add(water);
+const steel=basic('#a7afba'),sleeper=basic('#3a3c42');
+const deck=new THREE.Mesh(new THREE.BoxGeometry(5,0.6,800),basic('#7a7d82'));deck.position.set(0,-2.1,-300);dayG.add(deck);
+[-0.72,0.72].forEach(x=>{const r=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.12,800),steel);r.position.set(x,-1.7,-300);dayG.add(r);});
+addMover(dayG,new THREE.BoxGeometry(2.4,0.1,0.25),sleeper,90,i=>({x:0,y:-1.8,z:-260+i*3}),-260,10);
+addMover(dayG,new THREE.BoxGeometry(0.18,6,0.18),steel,10,i=>({x:3.2,y:1,z:-270+i*28}),-270,10);
+addMover(dayG,new THREE.BoxGeometry(4,0.08,0.08),steel,10,i=>({x:1.3,y:3.9,z:-270+i*28}),-270,10);
+addMover(dayG,new THREE.BoxGeometry(3,7,2.4),basic('#60646a'),12,i=>({x:0,y:-5.8,z:-270+i*24}),-270,18);
+addMover(dayG,new THREE.ConeGeometry(2.2,9,6),basic('#24472c'),300,i=>({x:-30-Math.random()*130,y:-4+Math.random()*3,z:-320+Math.random()*380,s:.7+Math.random()*.9}),-320,60);
+addMover(dayG,new THREE.BoxGeometry(2.2,1.8,2.6),basic('#ece6da'),36,i=>({x:90+Math.random()*120,y:-7.6,z:-420+Math.random()*480,ry:Math.random()*3}),-420,60);
+addMover(dayG,new THREE.ConeGeometry(1.9,1.4,4),basic('#a8432c'),36,i=>({x:0,y:0,z:0}),-420,60);
+// align roofs to houses
+(function(){const h=movers[movers.length-2],r=movers[movers.length-1];r.items.forEach((it,i)=>{const b=h.items[i];it.x=b.x;it.y=-6.0;it.z=b.z;it.ry=b.ry+Math.PI/4;});updMover(r,0);const orig=updMover;})();
+
+/* --- EVENING: private cinema --- */
+const cineG=new THREE.Group(); scene.add(cineG);
+const posterTex=canvasTex(1600,900,(c,w,h)=>{c.fillStyle='#0a1540';c.fillRect(0,0,w,h);c.fillStyle='#ffffff';c.textAlign='center';c.font='bold 150px Helvetica, Arial';c.fillText('dream',w/2,h/2-40);c.fillStyle='#ff5a26';c.font='bold 64px Helvetica, Arial';c.fillText('Private cinema',w/2,h/2+50);c.fillStyle='#a9b4d6';c.font='40px Helvetica, Arial';c.fillText('Pick a film below',w/2,h/2+130);});
+const screenMat=new THREE.MeshBasicMaterial({map:posterTex});
+const scr=new THREE.Mesh(new THREE.PlaneGeometry(16,9),screenMat);scr.position.set(0,1.6,-13);cineG.add(scr);
+const halo=new THREE.Mesh(new THREE.PlaneGeometry(18,11),basic('#111c4a'));halo.position.set(0,1.6,-13.05);cineG.add(halo);
+const cfloor=new THREE.Mesh(new THREE.PlaneGeometry(40,40),basic('#060c26'));cfloor.rotation.x=-Math.PI/2;cfloor.position.y=-1.3;cineG.add(cfloor);
+const seatM=new THREE.InstancedMesh(new THREE.BoxGeometry(0.8,0.9,0.8),basic('#18276a'),24);
+for(let r=0;r<3;r++)for(let k=0;k<8;k++){dummy.position.set(-3.5+k,-0.85-r*0.25,-5.2-r*1.6);dummy.rotation.set(0,0,0);dummy.scale.setScalar(1);dummy.updateMatrix();seatM.setMatrixAt(r*8+k,dummy.matrix);}cineG.add(seatM);
+[-7,7].forEach(x=>{const l=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,20),basic('#ff5a26'));l.position.set(x,-1.2,-5);cineG.add(l);const l2=l.clone();l2.position.y=3.8;cineG.add(l2);});
+// mock catalogue — invented titles; Play hands over to Prime Video
+const FILMS=[
+ {t:'Northbound',g:'Drama',d:'1 h 52',c:['#1d3b6e','#e7a35c']},
+ {t:'The Last Sleeper',g:'Thriller',d:'2 h 04',c:['#0d0f1f','#c2312b']},
+ {t:'Midnight in Lyon',g:'Romance',d:'1 h 41',c:['#3a1846','#f0b4a0']},
+ {t:'Signal Red',g:'Action',d:'2 h 10',c:['#1a0b0b','#ff5a26']},
+ {t:'Coastline',g:'Documentary',d:'1 h 28',c:['#0f4c5c','#cfe8e3']},
+ {t:'The Quiet Carriage',g:'Comedy',d:'1 h 36',c:['#e9dcc5','#2b3a67']},
+ {t:'Alpine Light',g:'Documentary',d:'58 min',c:['#25466b','#f4f1e8']},
+ {t:'Two Tickets to Ghent',g:'Comedy',d:'1 h 44',c:['#f2c14e','#1b2a49']},
+ {t:'Vesper Line',g:'Mystery',d:'1 h 58',c:['#121a33','#8fa7d6']},
+ {t:'Overnight',g:'Drama',d:'1 h 47',c:['#24113d','#ffd29c']}
+];
+function drawPoster(c,w,h,f){const g=c.createLinearGradient(0,0,w*.3,h);g.addColorStop(0,f.c[0]);g.addColorStop(1,f.c[1]);c.fillStyle=g;c.fillRect(0,0,w,h);
+  c.globalAlpha=.18;c.fillStyle='#fff';for(let i=0;i<6;i++){c.beginPath();c.arc(w*(.2+.13*i),h*(.35+.05*Math.sin(i*1.7)),w*(.06+.03*(i%3)),0,7);c.fill();}c.globalAlpha=1;
+  c.fillStyle='rgba(0,0,0,.45)';c.fillRect(0,h*.62,w,h*.38);
+  c.fillStyle='#fff';c.textAlign='left';let size=Math.round(w*.12);c.font='bold '+size+'px '+'Helvetica, Arial';
+  const words=f.t.split(' ');let line='',y=h*.72,lines=[];words.forEach(wd=>{const tt=line?line+' '+wd:wd;if(c.measureText(tt).width>w*.84){lines.push(line);line=wd;}else line=tt;});lines.push(line);
+  lines.forEach((l,i)=>c.fillText(l,w*.08,y+i*size*1.1));
+  c.font=Math.round(w*.06)+'px Helvetica, Arial';c.fillStyle='rgba(255,255,255,.75)';c.fillText(f.g+' · '+f.d,w*.08,h*.95);
+  c.font='bold '+Math.round(w*.06)+'px Helvetica, Arial';c.fillStyle='#fff';c.fillText('dream',w*.08,h*.09);}
+const tileMeshes=[];
+FILMS.forEach((f,i)=>{const tex=canvasTex(256,384,(c,w,h)=>drawPoster(c,w,h,f));
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.45),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));
+  const row=i<5?0:1,k=i%5,ang=(k-2)*0.2;
+  m.position.set(Math.sin(ang)*2.4,row?-0.72:-0.22,-Math.cos(ang)*2.4);m.lookAt(0,m.position.y,0);m.userData={film:i};cineG.add(m);tileMeshes.push(m);});
+const playTex=canvasTex(512,128,(c,w,h)=>{c.fillStyle='#ff5a26';c.beginPath();c.moveTo(64,0);c.arcTo(w,0,w,h,64);c.arcTo(w,h,0,h,64);c.arcTo(0,h,0,0,64);c.arcTo(0,0,w,0,64);c.fill();c.fillStyle='#fff';c.font='bold 46px Helvetica, Arial';c.textAlign='center';c.fillText('▶  Play in Prime Video',w/2,h/2+16);});
+scr.userData={play:true}; // the big screen itself is the Play button once a film is chosen
+let selFilm=-1;
+function selectFilm(i){selFilm=i;const f=FILMS[i];screenMat.map=canvasTex(1600,900,(c,w,h)=>{c.fillStyle='#0a1540';c.fillRect(0,0,w,h);c.save();c.translate(80,70);drawPoster(c,507,760,f);c.restore();
+  c.fillStyle='#fff';c.textAlign='left';c.font='bold 92px Helvetica, Arial';c.fillText(f.t,680,300,860);c.fillStyle='#a9b4d6';c.font='44px Helvetica, Arial';c.fillText(f.g+' · '+f.d,680,380);
+  c.drawImage(playTex.image,680,470,560,140);c.fillStyle='#a9b4d6';c.font='34px Helvetica, Arial';c.fillText('Point at the screen and pull the trigger',680,680);});
+  screenMat.needsUpdate=true;}
+const cineTargets=[...tileMeshes,scr];
+const ray=new THREE.Raycaster(),tmpM=new THREE.Matrix4();
+function hitCinema(origin,dir){ray.set(origin,dir);const h=ray.intersectObjects(cineTargets,false)[0];return h?h.object:null;}
+function activateCinema(obj){if(!obj)return false;if(obj.userData.play){if(selFilm>=0)handoff(FILMS[selFilm]);}else selectFilm(obj.userData.film);return true;}
+
+/* --- NIGHT: cabin, wind down --- */
+const nightG=new THREE.Group(); scene.add(nightG);
+// outside the window
+const sp=[];for(let i=0;i<2400;i++){const u=Math.random()*Math.PI*2,v=Math.acos(Math.random()*0.95);const r=420;sp.push(r*Math.sin(v)*Math.cos(u),r*Math.cos(v)-20,r*Math.sin(v)*Math.sin(u));}
+const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
+nightG.add(new THREE.Points(sg,new THREE.PointsMaterial({color:'#ffffff',size:1.3,sizeAttenuation:false})));
+const moon=glowSprite('rgba(245,240,225,1)','rgba(180,190,230,0)',60);moon.position.set(-260,58,-80);nightG.add(moon);
+nightG.add(makeRange(330,20,110,'#0e1636',4,999));
+nightG.add(makeRange(240,4,40,'#070b1c',9,999));
+const ng=new THREE.Mesh(new THREE.CircleGeometry(460,64),basic('#050817'));ng.rotation.x=-Math.PI/2;ng.position.y=-9;nightG.add(ng);
+addMover(nightG,new THREE.BoxGeometry(0.7,0.5,0.7),basic('#ffcf8a'),70,i=>({x:-40-Math.random()*180,y:-8.4,z:-320+Math.random()*380}),-320,60);
+addMover(nightG,new THREE.ConeGeometry(2,8,6),basic('#03050d'),140,i=>({x:-10-Math.random()*50,y:-5,z:-300+Math.random()*340,s:.7+Math.random()*.8}),-300,40);
+addMover(nightG,new THREE.BoxGeometry(0.16,7,0.16),basic('#1a2140'),12,i=>({x:-4,y:0.5,z:-270+i*23}),-270,6);
+// the cabin (warm beige, as on dream's sleeper imagery)
+const wallTex=canvasTex(512,512,(c,w,h)=>{const g=c.createRadialGradient(w*.5,h*.35,10,w*.5,h*.5,w*.75);g.addColorStop(0,'#d8c2a2');g.addColorStop(1,'#6e5b47');c.fillStyle=g;c.fillRect(0,0,w,h);});
+const wallMat=new THREE.MeshBasicMaterial({map:wallTex,side:THREE.DoubleSide});
+function panel(w,h,x,y,z,ry,rx,mat){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat||wallMat);m.position.set(x,y,z);m.rotation.set(rx||0,ry||0,0);nightG.add(m);return m;}
+const X0=-1.1,X1=1.1,Y0=-1.25,Y1=1.0,Z0=-1.8,Z1=1.0,WZ0=-1.3,WZ1=0.2,WY0=-0.4,WY1=0.5;
+panel(X1-X0,Y1-Y0,0,(Y0+Y1)/2,Z0,0);
+panel(X1-X0,Y1-Y0,0,(Y0+Y1)/2,Z1,Math.PI);
+panel(Z1-Z0,Y1-Y0,X1,(Y0+Y1)/2,(Z0+Z1)/2,-Math.PI/2);
+panel(X1-X0,Z1-Z0,0,Y0,(Z0+Z1)/2,0,-Math.PI/2,new THREE.MeshBasicMaterial({color:'#4a3c2f',side:THREE.DoubleSide}));
+panel(X1-X0,Z1-Z0,0,Y1,(Z0+Z1)/2,0,Math.PI/2,new THREE.MeshBasicMaterial({color:'#a8957b',side:THREE.DoubleSide}));
+panel(Z1-Z0,WY0-Y0,X0,(Y0+WY0)/2,(Z0+Z1)/2,Math.PI/2);
+panel(Z1-Z0,Y1-WY1,X0,(WY1+Y1)/2,(Z0+Z1)/2,Math.PI/2);
+panel(WZ0-Z0,WY1-WY0,X0,(WY0+WY1)/2,(Z0+WZ0)/2,Math.PI/2);
+panel(Z1-WZ1,WY1-WY0,X0,(WY0+WY1)/2,(WZ1+Z1)/2,Math.PI/2);
+const frame=basic('#2b241d');
+[[0.04,0.05,WZ1-WZ0+0.08,X0+0.02,WY0,(WZ0+WZ1)/2],[0.04,0.05,WZ1-WZ0+0.08,X0+0.02,WY1,(WZ0+WZ1)/2],[0.04,WY1-WY0,0.05,X0+0.02,(WY0+WY1)/2,WZ0],[0.04,WY1-WY0,0.05,X0+0.02,(WY0+WY1)/2,WZ1]].forEach(a=>{const b=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),frame);b.position.set(a[3],a[4],a[5]);nightG.add(b);});
+const strip=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,WZ1-WZ0),basic('#ffe2b8'));strip.position.set(X0+0.06,WY1+0.08,(WZ0+WZ1)/2);nightG.add(strip);
+const stripGlow=glowSprite('rgba(255,210,150,.2)','rgba(255,200,140,0)',1.6);stripGlow.scale.set(1.8,0.5,1);stripGlow.position.set(X0+0.1,WY1+0.1,(WZ0+WZ1)/2);nightG.add(stripGlow);
+const table=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.06,0.45),basic('#c3ad8d'));table.position.set(0.78,-0.55,-1.45);nightG.add(table);
+const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.02,0.22,12),basic('#3b3128'));stem.position.set(0.88,-0.41,-1.55);nightG.add(stem);
+const shade=new THREE.Mesh(new THREE.SphereGeometry(0.07,20,10,0,Math.PI*2,0,Math.PI/2),basic('#5a4a3a'));shade.position.set(0.88,-0.29,-1.55);nightG.add(shade);
+const lampGlow=glowSprite('rgba(255,215,160,.4)','rgba(255,190,120,0)',0.45);lampGlow.position.set(0.88,-0.33,-1.55);nightG.add(lampGlow);
+const blanket=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.28,1.4),basic('#e6ddcf'));blanket.position.set(0.25,-1.1,-0.95);nightG.add(blanket);
+const pillow=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.12,0.35),basic('#2c3354'));pillow.position.set(0.55,-0.92,-1.5);nightG.add(pillow);
+const orb=new THREE.Mesh(new THREE.SphereGeometry(0.09,32,16),new THREE.MeshBasicMaterial({color:'#ffe7c4',transparent:true,opacity:.9}));orb.position.set(0,-0.1,-1.5);nightG.add(orb);
+const orbGlow=glowSprite('rgba(255,225,180,.18)','rgba(255,210,160,0)',0.35);orb.add(orbGlow);
+
+/* --- OWN 360° --- */
+const panoG=new THREE.Group(); scene.add(panoG);
+const panoPh=canvasTex(2048,1024,(c,w,h)=>{c.fillStyle='#0a1540';c.fillRect(0,0,w,h);c.textAlign='center';for(let k=0;k<4;k++){c.fillStyle='#ff5a26';c.font='bold 60px Helvetica, Arial';c.fillText('360° & window views',w*(k+.5)/4,h/2-10);c.fillStyle='#a9b4d6';c.font='30px Helvetica, Arial';c.fillText('Add photos or videos in the 360° panel',w*(k+.5)/4,h/2+46);}});
+const panoGeo=new THREE.SphereGeometry(60,64,32);panoGeo.scale(-1,1,1);
+const panoMat=new THREE.MeshBasicMaterial({map:panoPh});const panoPhMesh=new THREE.Mesh(panoGeo,panoMat);panoG.add(panoPhMesh);
+const panoSurround=new THREE.Mesh(new THREE.SphereGeometry(80,32,16),new THREE.MeshBasicMaterial({color:'#071033',side:THREE.BackSide}));panoSurround.visible=false;panoG.add(panoSurround);
+const clipHolder=new THREE.Group();panoG.add(clipHolder);
+camera.layers.enable(1); // preview shows the left-eye copy of stereo clips
+const clips=[];let clipIdx=-1,clipYaw=0;
+function remapUV(geo,eye,stereo){if(stereo==='mono')return geo;const uv=geo.attributes.uv;for(let i=0;i<uv.count;i++){let u=uv.getX(i),v=uv.getY(i);
+  if(stereo==='tb'){v=eye===0?0.5+v*0.5:v*0.5;}else{u=eye===0?u*0.5:0.5+u*0.5;}uv.setXY(i,u,v);}uv.needsUpdate=true;return geo;}
+function resolveClip(c){
+  let st=c.stereo,fmt=c.fmt;const a=c.w/c.h;
+  if(st==='auto') st=(Math.abs(a-1)<0.08&&(fmt==='auto'||fmt==='360'))?'tb':'mono';
+  const ea=st==='tb'?a*2:st==='sbs'?a/2:a;
+  if(fmt==='auto') fmt=Math.abs(ea-2)<0.12?'360':ea>2.12?'pano':(Math.abs(ea-1)<0.08?'180':'window');
+  return {fmt,st,ea};
+}
+function buildGeo(fmt,ea){
+  let g;
+  if(fmt==='360'){g=new THREE.SphereGeometry(40,64,32);g.scale(-1,1,1);}
+  else if(fmt==='180'){g=new THREE.SphereGeometry(40,48,32,Math.PI,Math.PI);g.scale(-1,1,1);}
+  else if(fmt==='pano'){const L=Math.min(Math.PI*2,ea*THREE.MathUtils.degToRad(62));const r=20;g=new THREE.CylinderGeometry(r,r,r*L/ea,96,1,true,Math.PI-L/2,L);g.scale(-1,1,1);}
+  else {const L=THREE.MathUtils.degToRad(100),r=5;g=new THREE.CylinderGeometry(r,r,r*L/ea,64,1,true,Math.PI-L/2,L);g.scale(-1,1,1);g.translate(0,0.4,0);}
+  return g;
+}
+function showClip(i){
+  clips.forEach((c,k)=>{if(c.video&&k!==i)c.video.pause();});
+  while(clipHolder.children.length){const m=clipHolder.children.pop();m.geometry.dispose();m.material.dispose();}
+  clipIdx=i;const c=clips[i];panoPhMesh.visible=!c;panoSurround.visible=false;
+  if(c){const r=resolveClip(c);c.res=r;panoSurround.visible=r.fmt!=='360';
+    const eyes=r.st==='mono'?[0]:[0,1];
+    eyes.forEach(eye=>{const m=new THREE.Mesh(remapUV(buildGeo(r.fmt,r.ea),eye,r.st),new THREE.MeshBasicMaterial({map:c.tex,side:THREE.DoubleSide}));
+      if(r.st!=='mono')m.layers.set(eye+1);clipHolder.add(m);});
+    if(c.video)c.video.play().catch(()=>{});
+    $('#fmtSel').value=c.fmt;$('#stereoSel').value=c.stereo;}
+  renderClips();drawHUD();
+}
+function nextClip(){if(clips.length){showClip((clipIdx+1)%clips.length);if(S.mode!=='pano')setMode('pano');}}
+const FMT_NAME={'360':'360°','180':'180°','pano':'Panorama','window':'Window'};
+function renderClips(){
+  $('#clipCount').textContent=clips.length+(clips.length===1?' clip':' clips');
+  $('#clipList').innerHTML=clips.map((c,k)=>'<li><button data-clip="'+k+'" aria-pressed="'+(k===clipIdx)+'"><span>'+esc(c.name)+'</span><span class="k">'+(c.res?FMT_NAME[c.res.fmt]+(c.res.st!=='mono'?' · 3D':''):'')+(c.video?' · video':'')+'</span></button></li>').join('');
+}
+function addClipFile(f){
+  const url=URL.createObjectURL(f),c={name:f.name,fmt:'auto',stereo:'auto',w:2,h:1};
+  const done=()=>{clips.push(c);if(clips.length===1||clipIdx<0)showClip(clips.length-1);else renderClips();setMode('pano');};
+  if(f.type.startsWith('video')){const v=document.createElement('video');v.src=url;v.loop=true;v.playsInline=true;v.preload='auto';
+    v.addEventListener('loadedmetadata',()=>{c.w=v.videoWidth;c.h=v.videoHeight;c.video=v;c.tex=new THREE.VideoTexture(v);done();},{once:true});}
+  else{const img=new Image();img.onload=()=>{c.w=img.naturalWidth;c.h=img.naturalHeight;const t=new THREE.Texture(img);t.needsUpdate=true;c.tex=t;done();};img.src=url;}
+}
+
+/* --- HUD --- */
+const hudC=document.createElement('canvas');hudC.width=1024;hudC.height=440;const hctx=hudC.getContext('2d');
+const hudTex=new THREE.CanvasTexture(hudC);
+const hud=new THREE.Mesh(new THREE.PlaneGeometry(1.0,0.43),new THREE.MeshBasicMaterial({map:hudTex,transparent:true,depthTest:false}));
+hud.renderOrder=10;hud.position.set(0,-0.42,-1.3);hud.rotation.x=-0.32;rig.add(hud);
+const MODE_LABEL={day:'DAY · WATCH THE WORLD GO BY',cinema:'EVENING · PRIVATE CINEMA',night:'NIGHT · WIND DOWN',pano:'360° · WINDOW VIEWS'};
+const F='Helvetica, Arial, sans-serif';
+let breathText='';
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function drawHUD(){
+  const c=hctx,W=1024,H=440;c.clearRect(0,0,W,H);
+  rr(c,4,4,W-8,H-8,40);c.fillStyle='rgba(10,21,64,0.9)';c.fill();
+  c.textAlign='left';c.fillStyle='#fff';c.font='bold 44px '+F;c.fillText('dream',44,74);
+  const ww=c.measureText('dream').width;c.fillStyle='#ff5a26';c.font='bold 30px '+F;c.fillText('RailVerse',44+ww+16,74);
+  c.fillStyle='#a9b4d6';c.font='bold 20px '+F;c.textAlign='right';const ml=S.mode==='pano'&&clips[clipIdx]?(FMT_NAME[clips[clipIdx].res.fmt].toUpperCase()+' · '+(clipIdx+1)+'/'+clips.length):MODE_LABEL[S.mode];
+  c.fillText(ml+(S.sim?'  ·  SIM':''),W-44,70);
+  const n=nowMin(),st=routeState(n),ev=activeEvent(n);
+  c.textAlign='left';
+  if(S.mode==='night'&&breathText){c.fillStyle='#ffe7c4';c.font='bold 62px '+F;c.fillText(breathText,44,166);c.fillStyle='#a9b4d6';c.font='28px '+F;c.fillText(st&&st.phase==='run'?'Arriving '+st.next.name+' '+hhmm(st.next.t):'Sleep well',44,210);}
+  else if(st){
+    c.fillStyle='#fff';c.font='bold 56px '+F;
+    const big=st.phase==='pre'?'Departing '+st.next.name:st.phase==='done'?'Arrived in '+st.next.name:st.next.name;
+    c.fillText(big,44,160,W-250);
+    c.fillStyle='#a9b4d6';c.font='28px '+F;
+    const sub=st.phase==='pre'?'in '+minsText(st.mins)+' · '+hhmm(st.next.t):st.phase==='done'?'Arrived '+hhmm(st.next.t):'Next stop in '+minsText(st.mins)+' · arr. '+hhmm(st.next.t);
+    const li=st.next&&liveInfo[st.next.name];
+    const extra=li?((li.delay>0?'  ·  +'+li.delay+' min':'')+(li.track?'  ·  track '+li.track:'')):'';
+    c.fillText(sub+extra,44,204,W-200);
+  } else {c.fillStyle='#fff';c.font='bold 44px '+F;c.fillText('No journey entered',44,170);}
+  c.fillStyle='#fff';c.font='bold 30px '+F;c.textAlign='right';c.fillText(hhmm(n),W-44,204);
+  const live=S.liveSpeed&&liveFresh();
+  c.fillStyle=live?'#ff5a26':'#a9b4d6';c.font='bold 30px '+F;c.fillText(Math.round(sceneSpeed())+' km/h',W-44,160);
+  c.font='bold 16px '+F;c.fillText(live?'LIVE · TRAIN GPS':'SIMULATED',W-44,124);
+  if(markFlash>0){c.font='bold 26px '+F;rr(c,44,232,330,46,23);c.fillStyle='#ffffff';c.fill();c.fillStyle='#0a1540';c.textAlign='left';c.fillText('Marker saved · '+clockNow(),66,264);}
+  else if(ev){const d=ev.t-n;const txt=(d>0.5?'In '+minsText(d)+' · ':'Now · ')+ev.name;c.font='bold 26px '+F;const tw=Math.min(c.measureText(txt).width,W-140);
+    rr(c,44,232,tw+44,46,23);c.fillStyle='#ff5a26';c.fill();c.fillStyle='#fff';c.textAlign='left';c.fillText(txt,66,264,W-140);}
+  if(st){
+    const x0=44,x1=W-44,y=334,first=stations[0].t,last=stations[stations.length-1].t,X=t=>x0+(x1-x0)*(t-first)/(last-first);
+    c.lineCap='round';c.strokeStyle='#26377a';c.lineWidth=8;c.beginPath();c.moveTo(x0,y);c.lineTo(x1,y);c.stroke();
+    const xf=x0+(x1-x0)*st.frac;c.strokeStyle='#ffffff';c.beginPath();c.moveTo(x0,y);c.lineTo(xf,y);c.stroke();
+    stations.forEach(s=>{c.beginPath();c.arc(X(s.t),y,9,0,7);c.fillStyle=s.t<=n?'#ffffff':'#41539a';c.fill();});
+    events.forEach(e=>{const x=X(e.t);c.save();c.translate(x,y);c.rotate(Math.PI/4);c.fillStyle='#ff5a26';c.fillRect(-9,-9,18,18);c.restore();});
+    c.beginPath();c.arc(xf,y,15,0,7);c.fillStyle='#ff5a26';c.fill();
+    c.fillStyle='#a9b4d6';c.font='22px '+F;c.textAlign='left';c.fillText(stations[0].name,x0,y+50);c.textAlign='right';c.fillText(stations[stations.length-1].name,x1,y+50);
+  }
+  hudTex.needsUpdate=true;
+}
+
+/* --- mode --- */
+function setMode(m){
+  S.mode=m;dayG.visible=m==='day';cineG.visible=m==='cinema';nightG.visible=m==='night';panoG.visible=m==='pano';
+  scene.background=new THREE.Color(m==='day'?'#9fb6c9':m==='night'?'#050a1c':'#04081a');
+  scene.fog=m==='day'?new THREE.Fog('#c3d2e2',120,600):null;
+  if(m==='cinema'){hud.position.set(-1.15,-0.05,-0.95);hud.rotation.set(-0.1,0.85,0);}else{hud.position.set(0,m==='night'?-0.5:-0.42,m==='night'?-1.0:-1.3);hud.rotation.set(-0.32,0,0);}
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));
+  drawHUD();
+}
+const ORDER=['day','cinema','night','pano'];
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+const ctls=[];
+function ctlRay(ctl){tmpM.identity().extractRotation(ctl.matrixWorld);const o=new THREE.Vector3().setFromMatrixPosition(ctl.matrixWorld);const d=new THREE.Vector3(0,0,-1).applyMatrix4(tmpM);return [o,d];}
+for(let i=0;i<2;i++){const ctl=renderer.xr.getController(i);
+  const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-1)]),new THREE.LineBasicMaterial({color:'#ff5a26'}));line.scale.z=3;line.visible=false;ctl.add(line);ctl.userData.line=line;
+  ctl.addEventListener('selectstart',()=>{if(S.mode==='cinema'){const [o,d]=ctlRay(ctl);if(activateCinema(hitCinema(o,d)))return;}setMode(ORDER[(ORDER.indexOf(S.mode)+1)%ORDER.length]);});
+  ctl.addEventListener('squeezestart',()=>setHud(!S.hud));rig.add(ctl);ctls.push(ctl);}
+
+/* --- preview look --- */
+let yaw=0,pitch=0,drag=null;
+view.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};view.setPointerCapture(e.pointerId);});
+view.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*0.005;pitch+=(e.clientY-drag.y)*0.005;pitch=Math.max(-1.3,Math.min(1.3,pitch));drag={x:e.clientX,y:e.clientY};});
+view.addEventListener('pointerdown',e=>{view._down={x:e.clientX,y:e.clientY};});
+view.addEventListener('pointerup',e=>{drag=null;const d=view._down;if(!d||S.mode!=='cinema'||Math.hypot(e.clientX-d.x,e.clientY-d.y)>5)return;
+  const r=view.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);const h=ray.intersectObjects(cineTargets,false)[0];if(h)activateCinema(h.object);});view.addEventListener('pointercancel',()=>drag=null);
+function resize(){if(renderer.xr.isPresenting)return;const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+
+/* --- loop --- */
+const clock=new THREE.Clock();let hudT=0,markFlash=0;const padPrev={};
+renderer.setAnimationLoop(()=>{
+  const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
+  if(!renderer.xr.isPresenting) camera.rotation.set(pitch,yaw,0,'YXZ');
+  if(S.moving){const dz=sceneSpeed()/3.6*dt;movers.forEach(mv=>{if(mv.group.visible)updMover(mv,dz);});}
+  if(S.mode==='night'){const p=t%10;let s,txt;if(p<4){s=p/4;txt='Breathe in';}else{s=1-(p-4)/6;txt='Breathe out';}const e=s*s*(3-2*s);orb.scale.setScalar(1+1.3*e);if(txt!==breathText){breathText=txt;drawHUD();}}
+  const ses=renderer.xr.getSession&&renderer.xr.getSession();
+  if(ses){for(const src of ses.inputSources){const gp=src.gamepad;if(!gp)continue;const k=src.handedness;
+    const a=!!(gp.buttons[4]&&gp.buttons[4].pressed),b=!!(gp.buttons[5]&&gp.buttons[5].pressed),st=!!(gp.buttons[3]&&gp.buttons[3].pressed),prev=padPrev[k]||{};
+    if(a&&!prev.a)nextClip(); if(b&&!prev.b)togglePlay(); if(st&&!prev.st){addMarker();const h=gp.hapticActuators&&gp.hapticActuators[0];if(h&&h.pulse)h.pulse(0.7,120);} padPrev[k]={a,b,st};
+    const ax=gp.axes[2]||0;if(S.mode==='pano'&&Math.abs(ax)>0.25)setYaw(clipYaw-ax*60*dt);}}
+  ctls.forEach(c=>c.userData.line.visible=S.mode==='cinema'&&renderer.xr.isPresenting);
+  if(S.mode==='cinema'){let hov=null;if(renderer.xr.isPresenting)ctls.forEach(c=>{const [o,d]=ctlRay(c);hov=hitCinema(o,d)||hov;});
+    tileMeshes.forEach(m=>{const tgt=(m===hov?1.12:1)*(m.userData.film===selFilm?1.06:1);m.scale.setScalar(m.scale.x+(tgt-m.scale.x)*0.3);});}
+  if(markFlash>0)markFlash-=dt;
+  hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();}
+  renderer.render(scene,camera);
+});
+
+/* ---------- live panel ---------- */
+function updLive(){
+  const f=liveFresh(),tag=$('#liveTag');
+  tag.textContent=f?'Live':(LIVE.ok?'Signal lost':'Offline');tag.classList.toggle('live',f);
+  const g=f&&LIVE.lat?gpsProgress(LIVE.lat,LIVE.lon):null;
+  const rows=[['Train Wi-Fi',f?'Connected':(LIVE.ok?'No update for '+Math.round((Date.now()-LIVE.at)/1000)+' s':'Not reachable here')],
+    ['Speed',f?Math.round(LIVE.speed*3.6)+' km/h':'–'],
+    ['GPS',f&&LIVE.lat?LIVE.lat.toFixed(4)+', '+LIVE.lon.toFixed(4)+(g?' · on route':' · off route'):'–'],
+    ['Timetable',S.tvLoadedAt?'Trafikverket · '+new Date(S.tvLoadedAt).toLocaleTimeString().slice(0,5):'Estimated / manual']];
+  $('#liveNow').innerHTML=rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>').join('');
+  if(S.liveSpeed&&f)$('#speedVal').textContent='LIVE '+Math.round(LIVE.speed*3.6);else $('#speedVal').textContent=S.speed+' km/h';
+}
+function setLiveSpeed(on){S.liveSpeed=on;$('#liveSpdOn').setAttribute('aria-pressed',on);$('#liveSpdOff').setAttribute('aria-pressed',!on);save();updLive();}
+$('#liveSpdOn').onclick=()=>setLiveSpeed(true);$('#liveSpdOff').onclick=()=>setLiveSpeed(false);
+['train','from','to','key'].forEach(k=>{const el=$('#tv'+k[0].toUpperCase()+k.slice(1));el.value=S.tv[k]||'';el.oninput=()=>{S.tv[k]=el.value.trim();save();};});
+$('#tvSwap').onclick=()=>{const a=S.tv.from;S.tv.from=S.tv.to;S.tv.to=a;$('#tvFrom').value=S.tv.from;$('#tvTo').value=S.tv.to;save();};
+$('#tvLoad').onclick=loadTrafikverket;
+if(S.tv.key&&S.preset==='sj')loadTrafikverket();
+setInterval(()=>{if(S.tv.key&&S.tvLoadedAt&&S.preset==='sj')loadTrafikverket();},120000);
+
+/* ---------- YouTube links ---------- */
+function ytId(u){const m=/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(u);return m?m[1]:null;}
+function renderYt(){$('#ytList').innerHTML=S.yt.map((u,k)=>'<li class="yt"><a href="'+esc(u)+'" target="_blank" rel="noopener"><span>'+esc(ytId(u)?'youtube.com · '+ytId(u):u)+'</span><span class="k">Open ↗</span></a><button class="btn small" data-yt="'+k+'" aria-label="Remove link">✕</button></li>').join('');}
+$('#ytAdd').onclick=()=>{const v=$('#ytUrl').value.trim();if(!v)return;if(!/^https?:\/\//.test(v)){$('#ytUrl').value='';return;}S.yt.push(v);$('#ytUrl').value='';save();renderYt();};
+$('#ytList').addEventListener('click',e=>{const b=e.target.closest('[data-yt]');if(!b)return;S.yt.splice(+b.dataset.yt,1);save();renderYt();});
+renderYt();
+
+/* ---------- UI wiring ---------- */
+function setHud(on){S.hud=on;hud.visible=on;const b=$('#hudBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'HUD on':'HUD off';}
+$('#hudBtn').onclick=()=>setHud(!S.hud);
+function setMoving(on){S.moving=on;$('#mvOn').setAttribute('aria-pressed',on);$('#mvOff').setAttribute('aria-pressed',!on);}
+$('#mvOn').onclick=()=>setMoving(true);$('#mvOff').onclick=()=>setMoving(false);
+const sp_=$('#speed');sp_.value=S.speed;$('#speedVal').textContent=S.speed+' km/h';
+sp_.oninput=()=>{S.speed=+sp_.value;$('#speedVal').textContent=S.speed+' km/h';save();};
+const rt=$('#routeTxt'),pre=$('#preset');
+function loadPreset(){pre.value=S.preset;rt.value=S.routes[S.preset];parseRoute(rt.value);updTag();drawHUD();updRouteNow();}
+function updTag(){const tag=$('#routeTag');const same=rt.value.trim()===PRESETS[S.preset].text.trim();tag.hidden=!same;tag.textContent=PRESETS[S.preset].tag;}
+pre.onchange=()=>{S.preset=pre.value;S.sim=false;save();loadPreset();};
+rt.oninput=()=>{S.routes[S.preset]=rt.value;parseRoute(rt.value);updTag();save();drawHUD();updRouteNow();};
+$('#simBtn').onclick=()=>{S.sim=true;S.simReal=Date.now();drawHUD();updRouteNow();};
+$('#realBtn').onclick=()=>{S.sim=false;drawHUD();updRouteNow();};
+function esc(s){return String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));}
+function updRouteNow(){
+  const n=nowMin(),st=routeState(n),el=$('#routeNow');
+  if(!st){el.innerHTML='<dt>Status</dt><dd>Enter at least two stops</dd>';return;}
+  const nextEv=events.find(e=>e.t>=n-5);
+  const rows=[['Clock',hhmm(n)+(S.sim?' (simulated)':'')],['Position',whereText()],['Next stop',st.phase==='done'?'–':st.next.name+' in '+minsText(st.mins)],['Onboard',nextEv?hhmm(nextEv.t)+' · '+nextEv.name:'–'],['Journey time',minsText(stations[stations.length-1].t-stations[0].t)]];
+  el.innerHTML=rows.map(r=>'<dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd>').join('');
+  updLive();
+}
+
+/* media */
+let activeVideo=null;
+function makeVideo(file){const v=document.createElement('video');v.src=URL.createObjectURL(file);v.loop=true;v.playsInline=true;v.play().catch(()=>{});return v;}
+$('#panoFile').onchange=e=>{Array.from(e.target.files||[]).forEach(addClipFile);e.target.value='';};
+$('#clipList').addEventListener('click',e=>{const b=e.target.closest('[data-clip]');if(!b)return;showClip(+b.dataset.clip);setMode('pano');});
+$('#fmtSel').onchange=e=>{const c=clips[clipIdx];if(c){c.fmt=e.target.value;showClip(clipIdx);}};
+$('#stereoSel').onchange=e=>{const c=clips[clipIdx];if(c){c.stereo=e.target.value;showClip(clipIdx);}};
+function setYaw(d){clipYaw=((d+540)%360)-180;clipHolder.rotation.y=THREE.MathUtils.degToRad(clipYaw);$('#yawRange').value=Math.round(clipYaw/5)*5;$('#yawVal').textContent=Math.round(clipYaw)+'°';}
+$('#yawRange').oninput=e=>setYaw(+e.target.value);
+function togglePlay(){const v=S.mode==='pano'&&clips[clipIdx]&&clips[clipIdx].video?clips[clipIdx].video:activeVideo;if(!v)return;v.paused?v.play().catch(()=>{}):v.pause();}
+$('#movieFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const v=makeVideo(f);activeVideo=v;screenMat.map=new THREE.VideoTexture(v);screenMat.needsUpdate=true;setMode('cinema');};
+$('#playBtn').onclick=togglePlay;
+
+/* VR */
+const vrBtn=$('#vrBtn'),vrStatus=$('#vrStatus');
+if(navigator.xr&&navigator.xr.isSessionSupported){
+  navigator.xr.isSessionSupported('immersive-vr').then(ok=>{vrBtn.disabled=!ok;vrStatus.textContent=ok?'Ready. Turn on Travel Mode on the headset before you start.':'VR is not supported here. Open this page in the Quest browser.';}).catch(()=>{vrStatus.textContent='VR could not be checked in this view.';});
+} else vrStatus.textContent='WebXR is not available here. Open this page in the Quest browser on the headset.';
+let session=null;
+vrBtn.onclick=async()=>{
+  if(session){session.end();return;}
+  try{session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor']});
+    await renderer.xr.setSession(session);
+    vrBtn.textContent='Exit VR';vrStatus.textContent='Trigger: scene · grip: HUD · A/X: next clip · B/Y: play/pause · stick: rotate';
+    session.addEventListener('end',()=>{session=null;vrBtn.textContent='Enter VR';vrStatus.textContent='VR ended.';resize();});
+  }catch(err){session=null;vrStatus.textContent='VR could not start ('+(err.name||'error')+'). If this page is shown inside claude.ai, the frame may block VR; open the standalone file instead.';}
+};
+
+/* ---------- test log ---------- */
+const RATES=[['sick','Motion sickness','1 none · 5 severe'],['track','Tracking','1 unstable · 5 solid'],['comfort','Comfort','1 poor · 5 great'],['wow','Experience','1 flat · 5 wow']];
+function tstate(id){return S.tests[id]||(S.tests[id]={start:'',end:'',where:'',sick:0,track:0,comfort:0,wow:0,wifi:'',batt:'',note:''});}
+function clockNow(){const d=new Date();return hhmm(d.getHours()*60+d.getMinutes());}
+function renderTests(){
+  $('#tests').innerHTML=TESTS.map(T=>{const s=tstate(T.id);
+    return '<article class="test'+(s.start&&!s.end?' running':'')+'" data-id="'+T.id+'"><h3>'+T.t+'</h3><p class="how">'+T.h+'</p>'+
+    '<div class="row"><button class="btn small" data-act="start">Start</button><button class="btn small" data-act="stop">Stop</button></div>'+
+    '<div class="times">'+(s.start?'Started '+s.start+(s.end?' · stopped '+s.end:' · running')+(s.where?' · '+esc(s.where):''):'Not started')+'</div>'+
+    RATES.map(r=>'<div class="rate"><label title="'+r[2]+'">'+r[1]+'</label><div class="scale">'+[1,2,3,4,5].map(v=>'<button data-rate="'+r[0]+'" data-v="'+v+'" aria-pressed="'+(s[r[0]]===v)+'" aria-label="'+r[1]+' '+v+'">'+v+'</button>').join('')+'</div></div>').join('')+
+    '<div class="meta"><select id="wifi-'+T.id+'" data-f="wifi" aria-label="Wi-Fi"><option value="">Wi-Fi…</option>'+['Stable','Unstable','None'].map(o=>'<option'+(s.wifi===o?' selected':'')+'>'+o+'</option>').join('')+'</select>'+
+    '<input id="batt-'+T.id+'" data-f="batt" type="number" min="0" max="100" placeholder="Battery %" value="'+esc(s.batt)+'" aria-label="Battery percent"></div>'+
+    '<textarea id="note-'+T.id+'" data-f="note" rows="2" placeholder="Note" aria-label="Note">'+esc(s.note)+'</textarea></article>';}).join('');
+}
+$('#tests').addEventListener('click',e=>{
+  const card=e.target.closest('.test');if(!card)return;const s=tstate(card.dataset.id);const act=e.target.dataset.act;
+  if(act==='start'){s.start=clockNow();s.end='';s.where=whereText();}
+  else if(act==='stop'){if(!s.start)s.start=clockNow();s.end=clockNow();}
+  else if(e.target.dataset.rate){const k=e.target.dataset.rate,v=+e.target.dataset.v;s[k]=s[k]===v?0:v;}
+  else return;
+  save();renderTests();
+});
+$('#tests').addEventListener('input',e=>{const card=e.target.closest('.test');const f=e.target.dataset.f;if(!card||!f)return;tstate(card.dataset.id)[f]=e.target.value;save();});
+const SCENE_NAME={day:'Day',cinema:'Cinema',night:'Night',pano:'360/Window'};
+function snap(){const f=liveFresh();return {time:clockNow(),iso:new Date().toISOString(),where:whereText(),speed:Math.round(sceneSpeed()),src:S.liveSpeed&&f?'live':'sim',lat:f&&LIVE.lat?+LIVE.lat.toFixed(5):'',lon:f&&LIVE.lon?+LIVE.lon.toFixed(5):'',scene:SCENE_NAME[S.mode],vr:renderer.xr.isPresenting?'yes':'no'};}
+function renderNotes(){$('#noteList').innerHTML=S.notes.map((n,i)=>'<li><span class="when">'+n.time+(n.where?'<br>'+esc(n.where):'')+(n.speed!==undefined?'<br>'+n.speed+' km/h · '+esc(n.scene||''):'')+'</span><span>'+(n.marker?'<span class="mk">VR marker</span><input type="text" id="mk-'+i+'" data-mk="'+i+'" value="'+esc(n.text)+'" placeholder="What did you feel here?" aria-label="Marker comment">':esc(n.text))+'</span></li>').join('')||'<li><span class="when">–</span><span class="note">No notes yet.</span></li>';}
+function addNote(){const v=$('#noteTxt').value.trim();if(!v)return;S.notes.unshift(Object.assign(snap(),{text:v}));$('#noteTxt').value='';save();renderNotes();}
+function addMarker(){S.notes.unshift(Object.assign(snap(),{text:'',marker:true}));markFlash=2.5;save();renderNotes();drawHUD();}
+$('#noteList').addEventListener('input',e=>{const i=e.target.dataset.mk;if(i===undefined)return;S.notes[+i].text=e.target.value;save();});
+// journey track every 30 s
+if(!S.track)S.track=[];
+setInterval(()=>{if(document.hidden&&!renderer.xr.isPresenting)return;S.track.push(snap());if(S.track.length>3000)S.track.shift();save();},30000);
+// handoff to Prime Video
+function handoff(f){S.notes.unshift(Object.assign(snap(),{text:'Cinema handoff to Prime Video · '+f.t}));save();renderNotes();
+  $('#hoFilm').textContent=f.t+' · '+f.g+' · '+f.d+' (mock title)';$('#handoff').hidden=false;
+  const ses=renderer.xr.getSession&&renderer.xr.getSession();if(ses)ses.end().catch(()=>{});}
+$('#hoClose').onclick=()=>{$('#handoff').hidden=true;};
+$('#filmGrid').innerHTML=FILMS.map((f,i)=>'<div class="film"><canvas class="poster" width="256" height="384" data-poster="'+i+'"></canvas><b>'+esc(f.t)+'</b><span>'+esc(f.g+' · '+f.d)+'</span><button class="btn small" data-film="'+i+'">▶ Play</button></div>').join('');
+document.querySelectorAll('[data-poster]').forEach(cv=>drawPoster(cv.getContext('2d'),256,384,FILMS[+cv.dataset.poster]));
+$('#filmGrid').addEventListener('click',e=>{const b=e.target.closest('[data-film]');if(!b)return;selectFilm(+b.dataset.film);handoff(FILMS[+b.dataset.film]);});
+// offline: cache page + 3D engine when hosted (not inside claude.ai)
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!/claude/.test(location.host)){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+$('#noteBtn').onclick=addNote;$('#noteTxt').addEventListener('keydown',e=>{if(e.key==='Enter')addNote();});
+function csvCell(v){v=String(v==null?'':v);return /[,"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function buildCSV(){
+  const rows=[['Type','Test','Start','Stop','Position','Motion sickness','Tracking','Comfort','Experience','Wi-Fi','Battery %','Note','Speed km/h','Speed source','Lat','Lon','Scene','In VR','Timestamp']];
+  TESTS.forEach(T=>{const s=tstate(T.id);rows.push(['Test',T.t,s.start,s.end,s.where,s.sick||'',s.track||'',s.comfort||'',s.wow||'',s.wifi,s.batt,s.note]);});
+  const ext=n=>[n.speed,n.src,n.lat,n.lon,n.scene,n.vr,n.iso];
+  S.notes.slice().reverse().forEach(n=>rows.push([n.marker?'Marker':'Note','',n.time,'',n.where,'','','','','','',n.text].concat(ext(n))));
+  (S.track||[]).forEach(n=>rows.push(['Track','',n.time,'',n.where,'','','','','','',''].concat(ext(n))));
+  return rows.map(r=>r.map(csvCell).join(',')).join('\n');
+}
+$('#dlBtn').onclick=()=>{const b=new Blob(['\ufeff'+buildCSV()],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='railverse-test-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();
+  $('#csv').value=buildCSV();$('#csvPanel').hidden=false;};
+$('#exportBtn').onclick=()=>{$('#csv').value=buildCSV();$('#csvPanel').hidden=false;};
+$('#copyBtn').onclick=()=>{const t=$('#csv');navigator.clipboard.writeText(t.value).then(()=>{$('#copyBtn').textContent='Copied';setTimeout(()=>$('#copyBtn').textContent='Copy',1500);}).catch(()=>{t.focus();t.select();});};
+let clearArm=false;
+$('#clearBtn').onclick=()=>{const b=$('#clearBtn');if(!clearArm){clearArm=true;b.textContent='Click again to clear';setTimeout(()=>{clearArm=false;b.textContent='Clear log';},3000);return;}
+  S.tests={};S.notes=[];S.track=[];save();renderTests();renderNotes();clearArm=false;b.textContent='Clear log';};
+
+/* init */
+renderTests();renderNotes();setHud(true);setMoving(true);setLiveSpeed(S.liveSpeed!==false);loadPreset();setMode('day');resize();updRouteNow();
+})();
+</script>
+
+</html>
