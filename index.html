@@ -154,6 +154,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
     <div class="panel">
       <div class="row" style="justify-content:space-between"><h2>Journey</h2><span class="tag" id="routeTag">Illustrative</span></div>
       <select id="preset" aria-label="Journey preset">
+        <option value="sj184">SJ 184 · Skövde → Västerås (live)</option>
         <option value="sj">SJ 159 · Västerås → Skövde (live)</option>
         <option value="dream">dream Night · Amsterdam → München</option>
         <option value="trip">Custom trip</option>
@@ -289,10 +290,10 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v14 · 31 Oct 07:35';
+const BUILD='v15 · 31 Oct 17:15';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
- sj:{tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
+ sj:{tv:{train:'159',from:'Västerås',to:'Skövde'},tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
 06:30 Köping
 06:41 Arboga
 07:05 Örebro C
@@ -300,6 +301,14 @@ const PRESETS={
 07:48 Laxå
 08:08 Töreboda
 08:27 Skövde C`},
+ sj184:{tag:'Estimated times · live data replaces them',text:`17:14 Skövde C
+17:33 Töreboda
+17:53 Laxå
+18:17 Hallsberg
+18:36 Örebro C
+19:00 Arboga
+19:11 Köping
+19:29 Västerås C`,tv:{train:'184',from:'Skövde',to:'Västerås'}},
  dream:{tag:'Illustrative',text:`21:05 Amsterdam Centraal
 21:35 Utrecht Centraal
 22:50 Arnhem Centraal
@@ -326,8 +335,9 @@ const TESTS=[
 ];
 
 /* ---------- state ---------- */
-let S={mode:'day',moving:true,speed:200,hud:true,preset:'sj',routes:{sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},liveSpeed:true,tv:{train:'159',from:'Västerås',to:'Skövde',key:''},yt:['https://www.youtube.com/watch?v=I_00MTHuXXE'],sim:false,simReal:0,tests:{},notes:[]};
-try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){S=Object.assign(S,d,{sim:false});S.routes=Object.assign({sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},d.routes||{});}}catch(e){}
+let S={mode:'day',moving:true,speed:200,hud:true,preset:'sj',routes:{sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},liveSpeed:true,tv:{train:'159',from:'Västerås',to:'Skövde',key:''},yt:['https://www.youtube.com/watch?v=I_00MTHuXXE'],sim:false,simReal:0,tests:{},notes:[]};
+try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){S=Object.assign(S,d,{sim:false});S.routes=Object.assign({sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},d.routes||{});}}catch(e){}
+try{if(!localStorage.getItem('rv-return-184')){localStorage.setItem('rv-return-184','1');S.preset='sj184';S.tv=Object.assign({},S.tv,PRESETS.sj184.tv);}}catch(e){}
 if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
 function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt}));}catch(e){}}
 
@@ -403,7 +413,7 @@ async function loadTrafikverket(){
       const adv=new Date(a.AdvertisedTimeAtLocation),est=new Date(a.TimeAtLocation||a.EstimatedTimeAtLocation||a.AdvertisedTimeAtLocation);
       liveInfo[r.name]={delay:Math.round((est-adv)/60000),track:a.TrackAtLocation||'',cancel:!!a.Canceled,lat:geo[r.sig]&&geo[r.sig][0],lon:geo[r.sig]&&geo[r.sig][1]};
       return String(adv.getHours()).padStart(2,'0')+':'+String(adv.getMinutes()).padStart(2,'0')+' '+r.name;});
-    S.preset='sj';S.routes.sj=lines.join('\n');S.tvLoadedAt=Date.now();save();loadPreset();
+    if(!/^sj/.test(S.preset))S.preset='sj';S.routes[S.preset]=lines.join('\n');S.tvLoadedAt=Date.now();save();loadPreset();
     st.textContent='Loaded '+part.length+' stops · '+new Date().toLocaleTimeString().slice(0,5);
   }catch(e){st.textContent='Could not load: '+e.message+'. Check the key, train number and connection.';}
 }
@@ -923,8 +933,8 @@ $('#liveSpdOn').onclick=()=>setLiveSpeed(true);$('#liveSpdOff').onclick=()=>setL
 ['train','from','to','key'].forEach(k=>{const el=$('#tv'+k[0].toUpperCase()+k.slice(1));el.value=S.tv[k]||'';el.oninput=()=>{S.tv[k]=el.value.trim();save();};});
 $('#tvSwap').onclick=()=>{const a=S.tv.from;S.tv.from=S.tv.to;S.tv.to=a;$('#tvFrom').value=S.tv.from;$('#tvTo').value=S.tv.to;save();};
 $('#tvLoad').onclick=loadTrafikverket;
-if(S.tv.key&&S.preset==='sj')loadTrafikverket();
-setInterval(()=>{if(S.tv.key&&S.tvLoadedAt&&S.preset==='sj')loadTrafikverket();},120000);
+if(S.tv.key&&/^sj/.test(S.preset))loadTrafikverket();
+setInterval(()=>{if(S.tv.key&&S.tvLoadedAt&&/^sj/.test(S.preset))loadTrafikverket();},120000);
 
 /* ---------- YouTube links ---------- */
 function ytId(u){const m=/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(u);return m?m[1]:null;}
@@ -953,7 +963,7 @@ let journeyKey='';
 function loadPreset(){pre.value=S.preset;rt.value=S.routes[S.preset];parseRoute(rt.value);
   const jk=S.preset+'|'+(stations[0]||{}).name+'|'+(stations[stations.length-1]||{}).name+'|'+S.tv.train;if(jk!==journeyKey){journeyKey=jk;resetJourneyFlags();}updTag();drawHUD();updRouteNow();}
 function updTag(){const tag=$('#routeTag');const same=rt.value.trim()===PRESETS[S.preset].text.trim();tag.hidden=!same;tag.textContent=PRESETS[S.preset].tag;}
-pre.onchange=()=>{S.preset=pre.value;S.sim=false;save();loadPreset();};
+pre.onchange=()=>{S.preset=pre.value;S.sim=false;const pt=PRESETS[S.preset].tv;if(pt){S.tv=Object.assign({},S.tv,pt);$('#tvTrain').value=S.tv.train;$('#tvFrom').value=S.tv.from;$('#tvTo').value=S.tv.to;S.tvLoadedAt=0;}save();loadPreset();if(pt&&S.tv.key)loadTrafikverket();};
 rt.oninput=()=>{S.routes[S.preset]=rt.value;parseRoute(rt.value);updTag();save();drawHUD();updRouteNow();};
 $('#simBtn').onclick=()=>{S.sim=true;S.simReal=Date.now();drawHUD();updRouteNow();};
 $('#realBtn').onclick=()=>{S.sim=false;drawHUD();updRouteNow();};
