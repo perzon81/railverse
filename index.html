@@ -321,11 +321,26 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,route
 /* ---------- live onboard data (train Wi-Fi portal) ---------- */
 const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:''};
 function liveFresh(){return Date.now()-LIVE.at<25000;}
-function pollOnboard(){
+function applyOnboard(d){const sp=parseFloat(d.speed),la=parseFloat(d.latitude),lo=parseFloat(d.longitude);
+  if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;LIVE.src='Train Wi-Fi';LIVE.onboardAt=Date.now();updHeading(d);}
+// 1) plain fetch (works if the portal allows cross-origin reads; also handles replies without a callback name)
+// 2) JSONP script tag as fallback
+let fetchMode=true;
+async function pollOnboardFetch(){
+  const proto=location.protocol==='http:'?'http:':'https:';
+  const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),3500);
+  try{const r=await fetch(proto+'//www.ombord.info/api/jsonp/position/?_='+Date.now(),{signal:ctl.signal,cache:'no-store'});const t=await r.text();
+    const j=JSON.parse(t.trim().replace(/^[^({]*\(/,'').replace(/\)\s*;?\s*$/,''));applyOnboard(j);return true;}
+  catch(e){return false;}finally{clearTimeout(to);}
+}
+async function pollOnboard(){
+  if(fetchMode&&await pollOnboardFetch())return;
+  pollOnboardJsonp();
+}
+function pollOnboardJsonp(){
   const cb='__rvPos'+(++LIVE.tries),sc=document.createElement('script');
   const proto=location.protocol==='http:'?'http:':'https:';
-  window[cb]=d=>{try{const sp=parseFloat(d.speed),la=parseFloat(d.latitude),lo=parseFloat(d.longitude);
-      if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;LIVE.src='Train Wi-Fi';LIVE.onboardAt=Date.now();updHeading(d);}catch(e){} cleanup();};
+  window[cb]=d=>{try{applyOnboard(d);}catch(e){} cleanup();};
   function cleanup(){try{delete window[cb];}catch(e){window[cb]=undefined;} sc.remove();}
   sc.onerror=cleanup; setTimeout(()=>{if(window[cb])cleanup();},4000);
   sc.src=proto+'//www.ombord.info/api/jsonp/position/?callback='+cb+'&_='+Date.now();
