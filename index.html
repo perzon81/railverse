@@ -181,6 +181,17 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
       </div>
       <input type="password" id="tvKey" placeholder="Trafikverket API key (optional)" aria-label="Trafikverket API key" autocomplete="off">
       <div class="row"><button class="btn small" id="tvLoad">Load live timetable</button><span class="note" id="tvStatus"></span></div>
+      <details id="bridgeBox">
+        <summary class="note" style="cursor:pointer">Train Wi-Fi blocked? Use the bridge</summary>
+        <ol class="note" style="padding-left:18px;display:flex;flex-direction:column;gap:4px">
+          <li>Copy the bridge code.</li>
+          <li>Open <b>https://www.ombord.info/api/jsonp/position/</b> in a new tab.</li>
+          <li>Press <b>F12</b> → Console, type <code>allow pasting</code> if asked, paste the code and press Enter.</li>
+          <li>A new RailVerse tab opens and receives the train's GPS. Keep the portal tab open.</li>
+        </ol>
+        <div class="row"><button class="btn small" id="bridgeCopy">Copy bridge code</button></div>
+        <textarea id="bridgeTxt" readonly rows="3" aria-label="Bridge code" style="font-family:var(--mono);font-size:11px"></textarea>
+      </details>
       <p class="note">Speed and GPS come from the train's onboard Wi-Fi portal and only work when connected to it. The Trafikverket key adds real stops, delays and track numbers. The key is kept on this device only.</p>
     </div>
     <div class="panel">
@@ -278,7 +289,8 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v13 · 31 Oct 07:25';
+const BUILD='v14 · 31 Oct 07:35';
+const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  sj:{tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
 06:30 Köping
@@ -320,7 +332,7 @@ if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
 function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt}));}catch(e){}}
 
 /* ---------- live onboard data (train Wi-Fi portal) ---------- */
-const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:'',diag:{fetch:'–',script:'–'}};
+const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:'',diag:{fetch:'–',script:'–',bridge:''}};
 function liveFresh(){return Date.now()-LIVE.at<25000;}
 function applyOnboard(d){const sp=parseFloat(d.speed),la=parseFloat(d.latitude),lo=parseFloat(d.longitude);
   if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;LIVE.src='Train Wi-Fi';LIVE.onboardAt=Date.now();updHeading(d);}
@@ -348,6 +360,8 @@ function pollOnboardJsonp(){
   document.head.appendChild(sc);
 }
 setInterval(pollOnboard,3000);pollOnboard();
+window.addEventListener('message',e=>{if(!/^https?:\/\/www\.ombord\.info$/.test(e.origin))return;const m=e.data;if(!m||m.rv!=='pos'||!m.d)return;
+  try{applyOnboard(m.d);LIVE.src='Train Wi-Fi (bridge)';LIVE.diag.bridge='ok';}catch(x){}});
 const CURVE={on:true,yaw:0,rate:0,target:0,lastH:null,lastAt:0,prevPos:null};
 function wrap180(d){return ((d+540)%360)-180;}
 function bearing(a,b){const r=Math.PI/180,y=Math.sin((b[1]-a[1])*r)*Math.cos(b[0]*r),x=Math.cos(a[0]*r)*Math.sin(b[0]*r)-Math.sin(a[0]*r)*Math.cos(b[0]*r)*Math.cos((b[1]-a[1])*r);return (Math.atan2(y,x)/r+360)%360;}
@@ -1050,6 +1064,8 @@ $('#clearBtn').onclick=()=>{const b=$('#clearBtn');if(!clearArm){clearArm=true;b
 
 /* init */
 $('#buildTag').textContent=BUILD;
+$('#bridgeTxt').value=BRIDGE_CODE;
+$('#bridgeCopy').onclick=()=>{const t=$('#bridgeTxt');navigator.clipboard.writeText(t.value).then(()=>{$('#bridgeCopy').textContent='Copied';setTimeout(()=>$('#bridgeCopy').textContent='Copy bridge code',1500);}).catch(()=>{t.focus();t.select();});};
 renderTests();renderNotes();setHud(true);setMoving(true);setLiveSpeed(S.liveSpeed!==false);loadPreset();setMode('day');resize();updRouteNow();
 })();
 </script>
