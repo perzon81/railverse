@@ -338,12 +338,12 @@ async function pollOnboard(){
   pollOnboardJsonp();
 }
 function pollOnboardJsonp(){
-  const cb='__rvPos'+(++LIVE.tries),sc=document.createElement('script');
+  ++LIVE.tries;const cb='rvpos'+Array.from({length:8},()=>'abcdefghijklmnopqrstuvwxyz'[Math.random()*26|0]).join(''),sc=document.createElement('script'); // letters only: the portal accepts plain callback names
   const proto=location.protocol==='http:'?'http:':'https:';
   window[cb]=d=>{try{applyOnboard(d);}catch(e){} cleanup();};
   function cleanup(){try{delete window[cb];}catch(e){window[cb]=undefined;} sc.remove();}
   sc.onerror=cleanup; setTimeout(()=>{if(window[cb])cleanup();},4000);
-  sc.src=proto+'//www.ombord.info/api/jsonp/position/?callback='+cb+'&_='+Date.now();
+  sc.src=proto+'//www.ombord.info/api/jsonp/position/?callback='+cb;
   document.head.appendChild(sc);
 }
 setInterval(pollOnboard,3000);pollOnboard();
