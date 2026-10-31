@@ -319,13 +319,13 @@ if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
 function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt}));}catch(e){}}
 
 /* ---------- live onboard data (train Wi-Fi portal) ---------- */
-const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0};
-function liveFresh(){return Date.now()-LIVE.at<15000;}
+const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:''};
+function liveFresh(){return Date.now()-LIVE.at<25000;}
 function pollOnboard(){
   const cb='__rvPos'+(++LIVE.tries),sc=document.createElement('script');
   const proto=location.protocol==='http:'?'http:':'https:';
   window[cb]=d=>{try{const sp=parseFloat(d.speed),la=parseFloat(d.latitude),lo=parseFloat(d.longitude);
-      if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;updHeading(d);}catch(e){} cleanup();};
+      if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;LIVE.src='Train Wi-Fi';LIVE.onboardAt=Date.now();updHeading(d);}catch(e){} cleanup();};
   function cleanup(){try{delete window[cb];}catch(e){window[cb]=undefined;} sc.remove();}
   sc.onerror=cleanup; setTimeout(()=>{if(window[cb])cleanup();},4000);
   sc.src=proto+'//www.ombord.info/api/jsonp/position/?callback='+cb+'&_='+Date.now();
@@ -377,6 +377,25 @@ async function loadTrafikverket(){
     st.textContent='Loaded '+part.length+' stops · '+new Date().toLocaleTimeString().slice(0,5);
   }catch(e){st.textContent='Could not load: '+e.message+'. Check the key, train number and connection.';}
 }
+
+/* ---------- fallback: Trafikverket TrainPosition when the onboard portal is silent ---------- */
+async function pollTrainPosition(){
+  if(!S.tv.key||!S.tv.train)return;
+  if(LIVE.onboardAt&&Date.now()-LIVE.onboardAt<15000)return; // onboard portal is working
+  try{
+    const login='<LOGIN authenticationkey="'+xmlEsc(S.tv.key)+'"/>';
+    const res=await tvQuery('<REQUEST>'+login+'<QUERY objecttype="TrainPosition" namespace="järnväg.trafikinfo" schemaversion="1.1" limit="1" orderby="TimeStamp desc"><FILTER><AND><OR><EQ name="Train.AdvertisedTrainNumber" value="'+xmlEsc(S.tv.train)+'"/><EQ name="Train.OperationalTrainNumber" value="'+xmlEsc(S.tv.train)+'"/></OR><GT name="TimeStamp" value="$dateadd(-00:10:00)"/></AND></FILTER></QUERY></REQUEST>');
+    if(res.ERROR)throw new Error(res.ERROR.MESSAGE||'API error');
+    const tp=(res.TrainPosition||[])[0];if(!tp){LIVE.tvErr='No recent position for train '+S.tv.train;return;}
+    const m=tp.Position&&tp.Position.WGS84&&/POINT \(([\d.]+) ([\d.]+)\)/.exec(tp.Position.WGS84);
+    if(m){LIVE.lat=+m[2];LIVE.lon=+m[1];}
+    const sp=parseFloat(tp.Speed);if(isFinite(sp))LIVE.speed=sp/3.6;
+    const age=(Date.now()-new Date(tp.TimeStamp||Date.now()))/1000;
+    LIVE.at=Date.now()-Math.max(0,Math.min(10,age))*1000;LIVE.src='Trafikverket';LIVE.tvErr='';LIVE.tvAge=Math.round(age);
+    updHeading({cmg:tp.Bearing});
+  }catch(e){LIVE.tvErr=String(e.message||e).slice(0,80);}
+}
+setInterval(pollTrainPosition,10000);setTimeout(pollTrainPosition,1500);
 
 /* ---------- route ---------- */
 let stations=[],events=[];
@@ -695,7 +714,7 @@ function drawHUD(){
   c.fillStyle='#fff';c.font='bold 30px '+F;c.textAlign='right';c.fillText(hhmm(n),W-44,204);
   const live=S.liveSpeed&&liveFresh();
   c.fillStyle=live?'#ff5a26':'#a9b4d6';c.font='bold 30px '+F;c.fillText(Math.round(sceneSpeed())+' km/h',W-44,160);
-  c.font='bold 16px '+F;c.fillText(live?'LIVE · TRAIN GPS':'SIMULATED',W-44,124);
+  c.font='bold 16px '+F;c.fillText(live?(LIVE.src==='Trafikverket'?'LIVE · TRAFIKVERKET':'LIVE · TRAIN GPS'):'SIMULATED',W-44,124);
   const arriving=st&&st.phase==='run'&&st.mins<=2?st.next:null;ARR.cur=arriving;
   if(markFlash>0){c.font='bold 26px '+F;rr(c,44,232,330,46,23);c.fillStyle='#ffffff';c.fill();c.fillStyle='#0a1540';c.textAlign='left';c.fillText('Marker saved · '+clockNow(),66,264);}
   else if(arriving){const li=liveInfo[arriving.name]||{};const txt='Arriving '+arriving.name+(li.track?' · track '+li.track:'')+' · '+minsText(st.mins);c.font='bold 26px '+F;const tw=Math.min(c.measureText(txt).width,W-140);
@@ -861,7 +880,8 @@ function updLive(){
   const f=liveFresh(),tag=$('#liveTag');
   tag.textContent=f?'Live':(LIVE.ok?'Signal lost':'Offline');tag.classList.toggle('live',f);
   const g=f&&LIVE.lat?gpsProgress(LIVE.lat,LIVE.lon):null;
-  const rows=[['Train Wi-Fi',f?'Connected':(LIVE.ok?'No update for '+Math.round((Date.now()-LIVE.at)/1000)+' s':'Not reachable here')],
+  const ob=LIVE.onboardAt&&Date.now()-LIVE.onboardAt<15000;
+  const rows=[['Train Wi-Fi',ob?'Connected':'Not reachable here'],['Position source',f?LIVE.src+(LIVE.src==='Trafikverket'&&LIVE.tvAge!==undefined?' · '+LIVE.tvAge+' s old':''):(LIVE.tvErr||'–')],
     ['Speed',f?Math.round(LIVE.speed*3.6)+' km/h':'–'],
     ['GPS',f&&LIVE.lat?LIVE.lat.toFixed(4)+', '+LIVE.lon.toFixed(4)+(g?' · on route':' · off route'):'–'],
     ['Timetable',S.tvLoadedAt?'Trafikverket · '+new Date(S.tvLoadedAt).toLocaleTimeString().slice(0,5):'Estimated / manual']];
