@@ -115,7 +115,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 </style>
 
 <header class="top"><div class="wrap">
-  <div class="brand"><span class="word">dream</span><span class="rv">RailVerse</span><span class="sub">Onboard prototype · Meta Quest 2</span></div>
+  <div class="brand"><span class="word">dream</span><span class="rv">RailVerse</span><span class="sub">Onboard prototype · Meta Quest 2 · <span id="buildTag"></span></span></div>
   <div class="tag-line">Make travel time <b>your time</b></div>
 </div></header>
 
@@ -278,6 +278,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
+const BUILD='v13 · 31 Oct 07:25';
 const PRESETS={
  sj:{tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
 06:30 Köping
@@ -319,7 +320,7 @@ if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
 function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt}));}catch(e){}}
 
 /* ---------- live onboard data (train Wi-Fi portal) ---------- */
-const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:''};
+const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:'',diag:{fetch:'–',script:'–'}};
 function liveFresh(){return Date.now()-LIVE.at<25000;}
 function applyOnboard(d){const sp=parseFloat(d.speed),la=parseFloat(d.latitude),lo=parseFloat(d.longitude);
   if(isFinite(sp))LIVE.speed=sp; if(isFinite(la)&&isFinite(lo)&&(la||lo)){LIVE.lat=la;LIVE.lon=lo;} LIVE.at=Date.now();LIVE.ok++;LIVE.src='Train Wi-Fi';LIVE.onboardAt=Date.now();updHeading(d);}
@@ -330,8 +331,8 @@ async function pollOnboardFetch(){
   const proto=location.protocol==='http:'?'http:':'https:';
   const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),3500);
   try{const r=await fetch(proto+'//www.ombord.info/api/jsonp/position/?_='+Date.now(),{signal:ctl.signal,cache:'no-store'});const t=await r.text();
-    const j=JSON.parse(t.trim().replace(/^[^({]*\(/,'').replace(/\)\s*;?\s*$/,''));applyOnboard(j);return true;}
-  catch(e){return false;}finally{clearTimeout(to);}
+    const j=JSON.parse(t.trim().replace(/^[^({]*\(/,'').replace(/\)\s*;?\s*$/,''));applyOnboard(j);LIVE.diag.fetch='ok';return true;}
+  catch(e){LIVE.diag.fetch=e.name==='AbortError'?'timeout':e.name==='SyntaxError'?'bad reply':'blocked';fetchMode=false;setTimeout(()=>{fetchMode=true;},60000);return false;}finally{clearTimeout(to);}
 }
 async function pollOnboard(){
   if(fetchMode&&await pollOnboardFetch())return;
@@ -340,9 +341,9 @@ async function pollOnboard(){
 function pollOnboardJsonp(){
   ++LIVE.tries;const cb='rvpos'+Array.from({length:8},()=>'abcdefghijklmnopqrstuvwxyz'[Math.random()*26|0]).join(''),sc=document.createElement('script'); // letters only: the portal accepts plain callback names
   const proto=location.protocol==='http:'?'http:':'https:';
-  window[cb]=d=>{try{applyOnboard(d);}catch(e){} cleanup();};
+  window[cb]=d=>{try{applyOnboard(d);LIVE.diag.script='ok';}catch(e){LIVE.diag.script='bad data';} cleanup();};
   function cleanup(){try{delete window[cb];}catch(e){window[cb]=undefined;} sc.remove();}
-  sc.onerror=cleanup; setTimeout(()=>{if(window[cb])cleanup();},4000);
+  sc.onerror=()=>{LIVE.diag.script='load error';cleanup();}; setTimeout(()=>{if(window[cb]){LIVE.diag.script='no callback';cleanup();}},4000);
   sc.src=proto+'//www.ombord.info/api/jsonp/position/?callback='+cb;
   document.head.appendChild(sc);
 }
@@ -896,7 +897,7 @@ function updLive(){
   tag.textContent=f?'Live':(LIVE.ok?'Signal lost':'Offline');tag.classList.toggle('live',f);
   const g=f&&LIVE.lat?gpsProgress(LIVE.lat,LIVE.lon):null;
   const ob=LIVE.onboardAt&&Date.now()-LIVE.onboardAt<15000;
-  const rows=[['Train Wi-Fi',ob?'Connected':'Not reachable here'],['Position source',f?LIVE.src+(LIVE.src==='Trafikverket'&&LIVE.tvAge!==undefined?' · '+LIVE.tvAge+' s old':''):(LIVE.tvErr||'–')],
+  const rows=[['Build',BUILD],['Train Wi-Fi',ob?'Connected':'Not reachable here · fetch: '+LIVE.diag.fetch+' · script: '+LIVE.diag.script],['Position source',f?LIVE.src+(LIVE.src==='Trafikverket'&&LIVE.tvAge!==undefined?' · '+LIVE.tvAge+' s old':''):(LIVE.tvErr||'–')],
     ['Speed',f?Math.round(LIVE.speed*3.6)+' km/h':'–'],
     ['GPS',f&&LIVE.lat?LIVE.lat.toFixed(4)+', '+LIVE.lon.toFixed(4)+(g?' · on route':' · off route'):'–'],
     ['Timetable',S.tvLoadedAt?'Trafikverket · '+new Date(S.tvLoadedAt).toLocaleTimeString().slice(0,5):'Estimated / manual']];
@@ -1048,6 +1049,7 @@ $('#clearBtn').onclick=()=>{const b=$('#clearBtn');if(!clearArm){clearArm=true;b
   S.tests={};S.notes=[];S.track=[];save();renderTests();renderNotes();clearArm=false;b.textContent='Clear log';};
 
 /* init */
+$('#buildTag').textContent=BUILD;
 renderTests();renderNotes();setHud(true);setMoving(true);setLiveSpeed(S.liveSpeed!==false);loadPreset();setMode('day');resize();updRouteNow();
 })();
 </script>

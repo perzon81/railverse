@@ -1,5 +1,5 @@
 // RailVerse offline cache: page + 3D engine, so the prototype starts even when the train Wi-Fi drops.
-const CACHE='railverse-v9';
+const CACHE='railverse-v13';
 const PRE=['./','./index.html','https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
