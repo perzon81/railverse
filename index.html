@@ -6,7 +6,7 @@
 <title>RailVerse Prototype</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-/* Layout: dream navy frame; 3D preview left, journey + media controls right, test log full width below */
+/* Layout: navy frame; 3D preview left, journey + media controls right, test log full width below */
 :root{
   --deep:#071033; --bg:#0a1540; --panel:#101d50; --panel2:#17275f; --line:#26377a;
   --fg:#ffffff; --muted:#a9b4d6; --accent:#ff5a26; --pill:#eceef3; --ink:#0a1540;
@@ -115,8 +115,8 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 </style>
 
 <header class="top"><div class="wrap">
-  <div class="brand"><span class="word">dream</span><span class="rv">RailVerse</span><span class="sub">Onboard prototype · Meta Quest 2 · <span id="buildTag"></span></span></div>
-  <div class="tag-line">Make travel time <b>your time</b></div>
+  <div class="brand"><span class="word">RailVerse</span><span class="sub">Onboard prototype · Meta Quest 2 · <span id="buildTag"></span></span></div>
+  <div class="tag-line">Onboard VR <b>field test</b></div>
 </div></header>
 
 <main class="wrap">
@@ -156,7 +156,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
       <select id="preset" aria-label="Journey preset">
         <option value="sj184">SJ 184 · Skövde → Västerås (live)</option>
         <option value="sj">SJ 159 · Västerås → Skövde (live)</option>
-        <option value="dream">dream Night · Amsterdam → München</option>
+        <option value="dream">Night route · Amsterdam → München</option>
         <option value="trip">Custom trip</option>
       </select>
       <textarea id="routeTxt" spellcheck="false" aria-label="Journey, one stop per line"></textarea>
@@ -234,7 +234,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
       <p class="note">Opens in YouTube on the headset, where 360° and VR180 play natively. Treat it as the window feed, then come back here and log it under Live Train View.</p>
     </div>
     <div class="panel">
-      <div class="row" style="justify-content:space-between"><h2>dream Cinema</h2><span class="tag">Mock catalogue</span></div>
+      <div class="row" style="justify-content:space-between"><h2>Private cinema</h2><span class="tag">Mock catalogue</span></div>
       <div class="films" id="filmGrid"></div>
       <p class="note">Titles are mock-ups. Play always hands over to Prime Video, where you watch the real film (download it before departure). In VR, point at a poster and pull the trigger.</p>
     </div>
@@ -276,7 +276,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 </main>
 <div class="handoff" id="handoff" hidden>
   <div class="card" role="dialog" aria-labelledby="hoTitle">
-    <div class="eyebrow" id="hoEyebrow">dream Cinema · handing over to</div>
+    <div class="eyebrow" id="hoEyebrow">Private cinema · handing over to</div>
     <h2 id="hoTitle">Prime Video</h2>
     <p class="note" id="hoFilm" style="font-size:14px"></p>
     <a class="go" id="hoGo" href="https://www.primevideo.com" target="_blank" rel="noopener">Continue in Prime Video</a>
@@ -290,7 +290,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v15 · 31 Oct 17:15';
+const BUILD='v16 · 2 Nov 15:00';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  sj:{tv:{train:'159',from:'Västerås',to:'Skövde'},tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
@@ -539,7 +539,7 @@ addMover(dayG,new THREE.ConeGeometry(1.9,1.4,4),basic('#a8432c'),36,i=>({x:0,y:0
 
 /* --- EVENING: private cinema --- */
 const cineG=new THREE.Group(); scene.add(cineG);
-const posterTex=canvasTex(1600,900,(c,w,h)=>{c.fillStyle='#0a1540';c.fillRect(0,0,w,h);c.fillStyle='#ffffff';c.textAlign='center';c.font='bold 150px Helvetica, Arial';c.fillText('dream',w/2,h/2-40);c.fillStyle='#ff5a26';c.font='bold 64px Helvetica, Arial';c.fillText('Private cinema',w/2,h/2+50);c.fillStyle='#a9b4d6';c.font='40px Helvetica, Arial';c.fillText('Pick a film below',w/2,h/2+130);});
+const posterTex=canvasTex(1600,900,(c,w,h)=>{c.fillStyle='#0a1540';c.fillRect(0,0,w,h);c.fillStyle='#ffffff';c.textAlign='center';c.font='bold 150px Helvetica, Arial';c.fillText('RailVerse',w/2,h/2-40);c.fillStyle='#ff5a26';c.font='bold 64px Helvetica, Arial';c.fillText('Private cinema',w/2,h/2+50);c.fillStyle='#a9b4d6';c.font='40px Helvetica, Arial';c.fillText('Pick a film below',w/2,h/2+130);});
 const screenMat=new THREE.MeshBasicMaterial({map:posterTex});
 const scr=new THREE.Mesh(new THREE.PlaneGeometry(16,9),screenMat);scr.position.set(0,1.6,-13);cineG.add(scr);
 const halo=new THREE.Mesh(new THREE.PlaneGeometry(18,11),basic('#111c4a'));halo.position.set(0,1.6,-13.05);cineG.add(halo);
@@ -567,7 +567,7 @@ function drawPoster(c,w,h,f){const g=c.createLinearGradient(0,0,w*.3,h);g.addCol
   const words=f.t.split(' ');let line='',y=h*.72,lines=[];words.forEach(wd=>{const tt=line?line+' '+wd:wd;if(c.measureText(tt).width>w*.84){lines.push(line);line=wd;}else line=tt;});lines.push(line);
   lines.forEach((l,i)=>c.fillText(l,w*.08,y+i*size*1.1));
   c.font=Math.round(w*.06)+'px Helvetica, Arial';c.fillStyle='rgba(255,255,255,.75)';c.fillText(f.g+' · '+f.d,w*.08,h*.95);
-  c.font='bold '+Math.round(w*.06)+'px Helvetica, Arial';c.fillStyle='#fff';c.fillText('dream',w*.08,h*.09);}
+  c.font='bold '+Math.round(w*.06)+'px Helvetica, Arial';c.fillStyle='#fff';c.fillText('RailVerse',w*.08,h*.09);}
 const tileMeshes=[];
 FILMS.forEach((f,i)=>{const tex=canvasTex(256,384,(c,w,h)=>drawPoster(c,w,h,f));
   const m=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.45),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));
@@ -599,7 +599,7 @@ const farN=new THREE.Group();nightG.children.slice(0,5).forEach(o=>farN.add(o));
 addMover(nightG,new THREE.BoxGeometry(0.7,0.5,0.7),basic('#ffcf8a'),70,i=>({x:-40-Math.random()*180,y:-8.4,z:-320+Math.random()*380}),-320,60);
 addMover(nightG,new THREE.ConeGeometry(2,8,6),basic('#03050d'),140,i=>({x:-10-Math.random()*50,y:-5,z:-300+Math.random()*340,s:.7+Math.random()*.8}),-300,40);
 addMover(nightG,new THREE.BoxGeometry(0.16,7,0.16),basic('#1a2140'),12,i=>({x:-4,y:0.5,z:-270+i*23}),-270,6);
-// the cabin (warm beige, as on dream's sleeper imagery)
+// the cabin (warm beige sleeper)
 const wallTex=canvasTex(512,512,(c,w,h)=>{const g=c.createRadialGradient(w*.5,h*.35,10,w*.5,h*.5,w*.75);g.addColorStop(0,'#d8c2a2');g.addColorStop(1,'#6e5b47');c.fillStyle=g;c.fillRect(0,0,w,h);});
 const wallMat=new THREE.MeshBasicMaterial({map:wallTex,side:THREE.DoubleSide});
 function panel(w,h,x,y,z,ry,rx,mat){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat||wallMat);m.position.set(x,y,z);m.rotation.set(rx||0,ry||0,0);nightG.add(m);return m;}
@@ -730,8 +730,7 @@ function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);
 function drawHUD(){
   const c=hctx,W=1024,H=440;c.setTransform(2,0,0,2,0,0);c.clearRect(0,0,W,H);
   rr(c,4,4,W-8,H-8,40);c.fillStyle='rgba(10,21,64,0.9)';c.fill();
-  c.textAlign='left';c.fillStyle='#fff';c.font='bold 44px '+F;c.fillText('dream',44,74);
-  const ww=c.measureText('dream').width;c.fillStyle='#ff5a26';c.font='bold 30px '+F;c.fillText('RailVerse',44+ww+16,74);
+  c.textAlign='left';c.fillStyle='#ff5a26';c.font='bold 40px '+F;c.fillText('RailVerse',44,74);
   c.fillStyle='#a9b4d6';c.font='bold 20px '+F;c.textAlign='right';const ml=S.mode==='pano'&&clips[clipIdx]?(FMT_NAME[clips[clipIdx].res.fmt].toUpperCase()+' · '+(clipIdx+1)+'/'+clips.length):MODE_LABEL[S.mode];
   c.fillText(ml+(S.sim?'  ·  SIM':''),W-44,70);
   const n=nowMin(),st=routeState(n),ev=activeEvent(n);
@@ -1043,7 +1042,7 @@ function showHandoff(o){$('#hoEyebrow').textContent=o.eyebrow;$('#hoTitle').text
   const go=$('#hoGo');go.href=o.href;go.textContent=o.cta;$('#hoSteps').innerHTML=o.steps.map(x=>'<li>'+x+'</li>').join('');$('#handoff').hidden=false;
   const ses=renderer.xr.getSession&&renderer.xr.getSession();if(ses)ses.end().catch(()=>{});}
 function handoff(f){S.notes.unshift(Object.assign(snap(),{text:'Cinema handoff to Prime Video · '+f.t}));save();renderNotes();
-  showHandoff({eyebrow:'dream Cinema · handing over to',title:'Prime Video',sub:f.t+' · '+f.g+' · '+f.d+' (mock title)',href:'https://www.primevideo.com',cta:'Continue in Prime Video',
+  showHandoff({eyebrow:'Private cinema · handing over to',title:'Prime Video',sub:f.t+' · '+f.g+' · '+f.d+' (mock title)',href:'https://www.primevideo.com',cta:'Continue in Prime Video',
     steps:['Downloaded film: press the <b>Meta button</b> and open the <b>Prime Video</b> app, then Downloads.','Streaming: the button opens Prime Video in the browser over the train Wi-Fi.','Come back here afterwards and log the session under Private cinema.']});}
 function handoffYT(){const list=S.yt.length?S.yt:['https://www.youtube.com'];S.notes.unshift(Object.assign(snap(),{text:'Window view handoff to YouTube'}));save();renderNotes();
   showHandoff({eyebrow:'RailVerse · window view on',title:'YouTube',sub:list.length+(list.length===1?' saved clip':' saved clips'),href:list[0],cta:'Open on YouTube',
