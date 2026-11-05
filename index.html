@@ -52,6 +52,8 @@ main.wrap{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:2
 .cardboard .splitline{display:block}
 .phonex{position:absolute;left:max(12px, env(safe-area-inset-left, 0px));top:max(12px, env(safe-area-inset-top, 0px));display:none;font:inherit;font-weight:700;font-size:15px;color:#fff;background:rgba(7,16,51,.8);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:10px 16px;min-height:44px;cursor:pointer;z-index:2}
 .phone .phonex{display:block}
+.phonecam{left:auto;right:max(12px, env(safe-area-inset-right, 0px))}
+.pcimg{width:100%;border-radius:12px;display:block;max-width:100%}
 .phone .keys{display:none!important}
 .mobileonly{display:none}
 .touch .mobileonly{display:inline-flex}
@@ -148,7 +150,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 
 <main class="wrap">
   <div class="stage">
-    <div class="view" id="view"><div class="reticle" aria-hidden="true"></div><div class="reticle eye l" aria-hidden="true"></div><div class="reticle eye r" aria-hidden="true"></div><div class="splitline" aria-hidden="true"></div><button class="phonex" id="phoneExit">✕ Exit</button><div class="keys" id="keysHelp"><b>Mouse</b> look around · <b>Click / Space</b> select or catch<br><b>← → ↑ ↓</b> look · <b>1–4</b> scene · <b>H</b> HUD · <b>M</b> marker<br><b>N</b> next clip · <b>P</b> play/pause · <b>C</b> curves<br>Demo: <b>T</b> train · <b>G</b> station · <b>E</b> moose · <b>B</b> birds · <b>S</b> snow<br><b>U</b> tunnel · <b>R</b> bridge · <b>L</b> level crossing<br>In questions: <b>← →</b> choose · <b>Enter</b> confirm · <b>X</b> skip<br><b>Esc</b> exits full screen · <b>K</b> hides this</div><div class="hint">Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker</div></div>
+    <div class="view" id="view"><div class="reticle" aria-hidden="true"></div><div class="reticle eye l" aria-hidden="true"></div><div class="reticle eye r" aria-hidden="true"></div><div class="splitline" aria-hidden="true"></div><button class="phonex" id="phoneExit">✕ Exit</button><button class="phonex phonecam" id="phoneShot">Postcard</button><div class="keys" id="keysHelp"><b>Mouse</b> look around · <b>Click / Space</b> select or catch<br><b>← → ↑ ↓</b> look · <b>1–4</b> scene · <b>H</b> HUD · <b>M</b> marker<br><b>N</b> next clip · <b>P</b> play/pause · <b>C</b> curves<br>Demo: <b>T</b> train · <b>G</b> station · <b>E</b> moose · <b>B</b> birds · <b>S</b> snow<br><b>U</b> tunnel · <b>R</b> bridge · <b>L</b> level crossing<br><b>V</b> carriage · <b>F</b> postcard<br>In questions: <b>← →</b> choose · <b>Enter</b> confirm · <b>X</b> skip<br><b>Esc</b> exits full screen · <b>K</b> hides this</div><div class="hint">Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker</div></div>
     <div class="vrrow">
       <button class="btn primary" id="vrBtn" disabled>Enter VR</button>
       <button class="btn" id="deskBtn">Full screen · no headset</button>
@@ -170,6 +172,9 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
         <button class="chip" id="curveBtn" aria-pressed="true">Curves synced</button>
         <button class="chip" id="soundBtn" aria-pressed="true">Sound on</button>
         <button class="chip" id="snowBtn" aria-pressed="false">Snow off</button>
+        <button class="chip" id="carBtn" aria-pressed="false">Carriage off</button>
+        <button class="chip" id="voiceBtn" aria-pressed="true">Voice guide on</button>
+        <button class="chip" id="shotBtn">Take postcard</button>
         <button class="chip" id="poiBtn" aria-pressed="true">Sights on</button>
       </div>
       <div class="row">
@@ -322,6 +327,14 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
     </div>
   </section>
 </main>
+<div class="handoff" id="postcard" hidden>
+  <div class="card" role="dialog" aria-label="Postcard" style="max-width:760px">
+    <div class="eyebrow">RailVerse · postcard from your journey</div>
+    <img id="pcImg" class="pcimg" alt="Postcard of the current view">
+    <div class="row"><a class="go" id="pcSave" href="#" download style="flex:1">Save postcard</a><button class="btn" id="pcShare" hidden>Share</button></div>
+    <button class="btn" id="pcClose">Back to RailVerse</button>
+  </div>
+</div>
 <div class="handoff" id="handoff" hidden>
   <div class="card" role="dialog" aria-labelledby="hoTitle">
     <div class="eyebrow" id="hoEyebrow">Private cinema · handing over to</div>
@@ -339,7 +352,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v21 · 6 Nov 00:10';
+const BUILD='v22 · 6 Nov 00:45';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  vs:{tv:{train:'',from:'Västerås',to:'Stockholm'},tag:'Estimated times · add the train number for live data',text:`07:05 Västerås C\n07:21 Enköping\n07:33 Bålsta\n07:52 Sundbyberg\n08:00 Stockholm C`},
@@ -390,7 +403,7 @@ let S={mode:'day',moving:true,speed:200,hud:true,preset:'sj',routes:{vs:PRESETS.
 try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){S=Object.assign(S,d,{sim:false});S.routes=Object.assign({vs:PRESETS.vs.text,sv:PRESETS.sv.text,sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},d.routes||{});}}catch(e){}
 try{if(!localStorage.getItem('rv-return-184')){localStorage.setItem('rv-return-184','1');S.preset='sj184';S.tv=Object.assign({},S.tv,PRESETS.sj184.tv);}}catch(e){}
 if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
-function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt,game:S.game}));}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt,game:S.game,voice:S.voice,carriage:S.carriage}));}catch(e){}}
 
 /* ---------- live onboard data (train Wi-Fi portal) ---------- */
 const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:'',diag:{fetch:'–',script:'–',bridge:''}};
@@ -844,7 +857,7 @@ function setMode(m){
   S.mode=m;dayG.visible=m==='day';cineG.visible=m==='cinema';nightG.visible=m==='night';panoG.visible=m==='pano';
   scene.background=new THREE.Color(m==='day'?'#9fb6c9':m==='night'?'#050a1c':'#04081a');
   scene.fog=m==='day'?new THREE.Fog('#c3d2e2',120,600):null;
-  try{WORLD.skyT=0;}catch(e){}
+  try{WORLD.skyT=0;updCarriage();}catch(e){}
   if(m==='cinema'){hud.position.set(-1.15,-0.05,-0.95);hud.rotation.set(-0.1,0.85,0);}else{hud.position.set(0,m==='night'?-0.5:-0.42,m==='night'?-1.0:-1.3);hud.rotation.set(-0.32,0,0);}
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));
   drawHUD();
@@ -953,6 +966,7 @@ document.addEventListener('keydown',e=>{
   const l=k.toLowerCase();
   if(l==='k'||k==='?'){const kh=$('#keysHelp');kh.classList.toggle('off');view.classList.toggle('helpoff',kh.classList.contains('off'));return;}
   if(l==='t'){setMode('day');spawnTrain();return;} if(l==='e'){setMode('day');spawnAnimals('moose');return;} if(l==='b'){setMode('day');spawnBirds();return;} if(l==='g'){setMode('day');const st=routeState(nowMin());spawnStation(st&&st.next?st.next.name:'Örebro C');return;} if(l==='s'){setSnow(!WORLD.snow);return;} if(l==='u'||l==='r'||l==='l'){setMode('day');if(l==='u')spawnTunnel();else if(l==='r')spawnBridge('Göta Canal');else spawnCrossing();EVT.list[EVT.list.length-1].position.z=-230;return;}
+  if(l==='f'){requestPostcard();return;} if(l==='v'){setCarriage(!CAR.on);return;}
   if(l==='h')setHud(!S.hud);else if(l==='m')addMarker();else if(l==='n')nextClip();else if(l==='p')togglePlay();else if(l==='c')setCurve(!CURVE.on);
 });
 document.addEventListener('keyup',e=>{delete keysDown[e.key];});
@@ -1003,7 +1017,7 @@ function updPoi(st){
   const p=POIS.find(x=>!POI.seen[x.id]&&distKm(ep.pos,x.trig)<=x.r);
   if(p&&EVT_GPS[p.id]&&S.mode==='day')spawnBridge(EVT_GPS[p.id]);
   if(p&&S.game.on)spawnToken(p);
-  if(p){POI.seen[p.id]=1;POI.cur=p;POI.shownAt=Date.now();const side=poiSide(ep,p);drawPoi(p,side);poiMesh.visible=true;pulseAll(0.3,120);
+  if(p){POI.seen[p.id]=1;POI.cur=p;POI.shownAt=Date.now();const side=poiSide(ep,p);say((side?side+'. ':'')+p.title+'. '+p.text.replace(/ · /g,'. ')+'.');drawPoi(p,side);poiMesh.visible=true;pulseAll(0.3,120);
     S.notes.unshift(Object.assign(snap(),{text:'Sight shown: '+p.title+(side?' ('+side.toLowerCase()+')':'')}));save();renderNotes();}
 }
 
@@ -1300,7 +1314,7 @@ function checkGuess(st){
 function rewardCode(){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='RV-';for(let i=0;i<6;i++)s+=a[Math.random()*a.length|0];return s;}
 function checkRewards(){
   REWARDS.forEach(r=>{if(S.game.score>=r.at&&!S.game.rewards.some(x=>x.at===r.at)){const rw={at:r.at,title:r.title,code:rewardCode()};S.game.rewards.push(rw);
-    showGameCard('You won: '+r.title,'Show this code in the bistro · demo',rw.code);pulseAll(1,400);ding(true);setTimeout(()=>ding(true),180);
+    say('Congratulations! You won: '+r.title+'.',true);showGameCard('You won: '+r.title,'Show this code in the bistro · demo',rw.code);pulseAll(1,400);ding(true);setTimeout(()=>ding(true),180);
     S.notes.unshift(Object.assign(snap(),{text:'Game reward: '+r.title+' ('+rw.code+', demo)'}));renderNotes();}});
 }
 function drawQR(c,x,y,size,text){
@@ -1341,6 +1355,104 @@ function renderGame(){
 }
 function resetGame(jk){S.game=Object.assign(S.game||{},{journey:jk,score:0,caught:0,stamps:{},guess:null,guessResult:null,rewards:[]});GAME.guessAsked=false;GAME.items.forEach(m=>itemsG.remove(m));GAME.items=[];save();}
 
+/* ---------- Voice guide (browser speech) ---------- */
+const VOICE={on:true,voice:null};
+function pickVoice(){try{const vs=speechSynthesis.getVoices();VOICE.voice=vs.find(v=>/en[-_]GB/i.test(v.lang)&&/female|serena|kate|libby|sonia|google uk/i.test(v.name))||vs.find(v=>/en[-_]GB/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))||null;}catch(e){}}
+if(window.speechSynthesis){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
+function say(text,urgent){if(!VOICE.on||!window.speechSynthesis)return;try{if(urgent)speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='en-GB';u.rate=0.96;u.pitch=1;if(VOICE.voice)u.voice=VOICE.voice;speechSynthesis.speak(u);}catch(e){}}
+function primeVoice(){try{if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);}}catch(e){}}
+function setVoice(on){VOICE.on=on;S.voice=on;save();const b=$('#voiceBtn');if(b){b.setAttribute('aria-pressed',on);b.textContent=on?'Voice guide on':'Voice guide off';}if(on){primeVoice();}else{try{speechSynthesis.cancel();}catch(e){}}}
+
+/* ---------- Virtual carriage (stable frame around you) ---------- */
+const CAR={on:false,g:new THREE.Group()};rig.add(CAR.g);CAR.g.visible=false;
+(function buildCarriage(){
+  const g=CAR.g,wall=basic('#d9cbb3'),trim=basic('#b9a98f'),dark=basic('#3a3530'),seat=basic('#24305a'),head=basic('#ff5a26'),ceil=basic('#ece4d4');
+  const Z0=2.2,Z1=-12.5,L=Z0-Z1,ZC=(Z0+Z1)/2,Y0=-1.25,Y1=1.15,X=1.45;
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(2*X,0.05,L),dark);floor.position.set(0,Y0,ZC);g.add(floor);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(2*X,0.05,L),ceil);roof.position.set(0,Y1,ZC);g.add(roof);
+  const strip=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.02,L-1),basic('#fff4dc'));strip.position.set(0,Y1-0.04,ZC);g.add(strip);
+  [-1,1].forEach(sx=>{
+    const low=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.85,L),wall);low.position.set(sx*X,Y0+0.42,ZC);g.add(low);
+    const sill=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.05,L),trim);sill.position.set(sx*(X-0.08),-0.38,ZC);g.add(sill);
+    const high=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.35,L),wall);high.position.set(sx*X,Y1-0.17,ZC);g.add(high);
+    for(let z=Z0;z>=Z1;z-=2.2){const p=new THREE.Mesh(new THREE.BoxGeometry(0.12,1.6,0.22),trim);p.position.set(sx*(X-0.02),0.2,z);g.add(p);}
+    // seat rows ahead and behind, both sides of the aisle
+    for(let z=-3.2;z>=Z1+1;z-=2.2){const b=new THREE.Mesh(new THREE.BoxGeometry(0.95,0.95,0.18),seat);b.position.set(sx*0.85,Y0+0.48,z);g.add(b);
+      const hr=new THREE.Mesh(new THREE.BoxGeometry(0.85,0.1,0.2),head);hr.position.set(sx*0.85,Y0+1.0,z);g.add(hr);}
+  });
+  // front partition with a wide window, and your own table
+  [-1,1].forEach(sx=>{const s=new THREE.Mesh(new THREE.BoxGeometry(0.75,2.4,0.08),wall);s.position.set(sx*1.08,0,Z1);g.add(s);});
+  const lintel=new THREE.Mesh(new THREE.BoxGeometry(2*X,0.35,0.08),wall);lintel.position.set(0,Y1-0.17,Z1);g.add(lintel);
+  const lowp=new THREE.Mesh(new THREE.BoxGeometry(2*X,0.7,0.08),wall);lowp.position.set(0,Y0+0.35,Z1);g.add(lowp);
+  const table=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.04,0.5),basic('#c3ad8d'));table.position.set(-0.05,-0.62,-0.75);g.add(table);
+  const cup=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.035,0.1,16),basic('#f4f2ee'));cup.position.set(0.18,-0.55,-0.7);g.add(cup);
+  const coffee=new THREE.Mesh(new THREE.CircleGeometry(0.036,16),basic('#5a3a22'));coffee.rotation.x=-Math.PI/2;coffee.position.set(0.18,-0.499,-0.7);g.add(coffee);
+})();
+function setCarriage(on){CAR.on=on;S.carriage=on;save();const b=$('#carBtn');if(b){b.setAttribute('aria-pressed',on);b.textContent=on?'Carriage on':'Carriage off';}updCarriage();drawHUD();}
+function updCarriage(){CAR.g.visible=CAR.on&&S.mode==='day';}
+
+/* ---------- Postcards ---------- */
+let WANT_SHOT=false;const SHOTS=[];
+function requestPostcard(){WANT_SHOT=true;}
+function capturePostcard(){
+  WANT_SHOT=false;const src=renderer.domElement;let sw=src.width,sh=src.height,sx=0;if(PHONE.mode==='cardboard'){sw=sw/2;}
+  const c=document.createElement('canvas');c.width=1600;c.height=1060;const x=c.getContext('2d');
+  x.fillStyle='#f4f2ee';x.fillRect(0,0,1600,1060);
+  const W=1520,H=800,ar=W/H;let cw=sw,ch=sw/ar;if(ch>sh){ch=sh;cw=sh*ar;}
+  try{x.drawImage(src,sx+(sw-cw)/2,(sh-ch)/2,cw,ch,40,40,W,H);}catch(e){}
+  const st=routeState(nowMin()),title=POI.cur?POI.cur.title:(st&&st.next?(st.phase==='done'?'Arrived in ':'Next: ')+st.next.name:'RailVerse');
+  x.fillStyle='#0a1540';x.font='bold 56px Helvetica, Arial';x.textAlign='left';x.fillText(title,48,930,1150);
+  const d=new Date();x.fillStyle='#4a5570';x.font='30px Helvetica, Arial';
+  x.fillText([whereText(),Math.round(sceneSpeed())+' km/h',d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+' '+hhmm(d.getHours()*60+d.getMinutes())].filter(Boolean).join('  ·  '),48,985,1150);
+  x.fillStyle='#ff5a26';x.font='bold 44px Helvetica, Arial';x.textAlign='right';x.fillText('RailVerse',1552,950);
+  x.save();x.translate(1400,170);x.rotate(-0.25);x.strokeStyle='rgba(255,90,38,.85)';x.lineWidth=5;x.beginPath();x.arc(0,0,92,0,7);x.stroke();x.beginPath();x.arc(0,0,72,0,7);x.stroke();
+  x.fillStyle='rgba(255,90,38,.9)';x.font='bold 24px Helvetica, Arial';x.textAlign='center';x.fillText('RAILVERSE',0,-14);x.font='20px Helvetica, Arial';x.fillText(d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}).toUpperCase(),0,18);x.restore();
+  const url=c.toDataURL('image/jpeg',0.9);SHOTS.unshift({url,title});
+  S.notes.unshift(Object.assign(snap(),{text:'Postcard: '+title}));save();renderNotes();
+  ding(true);showPostcard(url,title,c);
+}
+function showPostcard(url,title,canvas){
+  if(renderer.xr.isPresenting){showGameCard('Postcard saved',title+' · find it in the browser view',null);return;}
+  const box=$('#postcard');$('#pcImg').src=url;const a=$('#pcSave');a.href=url;a.download='railverse-'+title.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase()+'.jpg';
+  const sh=$('#pcShare');sh.hidden=!(navigator.canShare);sh.onclick=async()=>{try{const blob=await (await fetch(url)).blob();const f=new File([blob],a.download,{type:'image/jpeg'});if(navigator.canShare({files:[f]}))await navigator.share({files:[f],title:'RailVerse postcard',text:title});}catch(e){}};
+  if(document.pointerLockElement)document.exitPointerLock();(document.fullscreenElement===view?view:document.body).appendChild(box);box.hidden=false;
+}
+
+/* ---------- Hand tracking: pinch to select, touch tokens that float within reach ---------- */
+const HANDS={list:[],tips:{},pinch:[false,false],items:[],spawnT:8,active:false,dots:[]};
+for(let i=0;i<2;i++){const h=renderer.xr.getHand(i);rig.add(h);HANDS.list.push(h);}
+const jointMat=new THREE.MeshBasicMaterial({color:'#ffe7c4',transparent:true,opacity:.85}),tipMat=new THREE.MeshBasicMaterial({color:'#ff5a26'});
+const jointGeo=new THREE.SphereGeometry(0.008,8,6),tipGeo=new THREE.SphereGeometry(0.011,10,8);
+function jointPos(h,name,out){const j=h.joints&&h.joints[name];if(!j||!j.visible)return null;j.getWorldPosition(out);return out;}
+const _a=new THREE.Vector3(),_b=new THREE.Vector3(),_c=new THREE.Vector3(),_cp=new THREE.Vector3();
+function selectFromRay(o,d){
+  if(S.mode==='cinema'){ray.set(o,d);const h=ray.intersectObjects(cineTargets,false)[0];if(h){activateCinema(h.object);return true;}}
+  if(S.mode==='pano'){ray.set(o,d);if(ray.intersectObject(ytSign,false).length){handoffYT();return true;}}
+  if(S.mode==='day'&&S.game.on){const m=GAME.items.find(m=>m.position.clone().sub(o).normalize().dot(d)>0.97);if(m){catchItem(m);return true;}}
+  return false;
+}
+const handTokGeo=new THREE.OctahedronGeometry(0.05,0);
+function spawnHandToken(){const m=new THREE.Group();m.add(new THREE.Mesh(handTokGeo,tokenMat),new THREE.Mesh(handTokGeo,tokenEdge));const g=glowSprite('rgba(255,200,110,.9)','rgba(255,120,40,0)',0.35);m.add(g);
+  const tx=(Math.random()-.5)*0.6,ty=-0.15+Math.random()*0.35,tz=-0.38-Math.random()*0.15;m.position.set(tx,ty+0.4,-5);m.userData={tx,ty,tz,t:0};rig.add(m);HANDS.items.push(m);}
+function handsUpdate(dt){
+  if(!renderer.xr.isPresenting){HANDS.active=false;return;}
+  let any=false;const tips=[];
+  HANDS.list.forEach((h,i)=>{
+    const ti=jointPos(h,'index-finger-tip',_a),th=jointPos(h,'thumb-tip',_b);
+    if(h.joints){for(const n in h.joints){const j=h.joints[n];if(!j.userData.dot){const tip=/tip$/.test(n);const s=new THREE.Mesh(tip?tipGeo:jointGeo,tip?tipMat:jointMat);j.add(s);j.userData.dot=s;}}}
+    if(!ti||!th){HANDS.pinch[i]=false;return;}any=true;tips.push(ti.clone());
+    const p=ti.distanceTo(th)<0.022;
+    if(p&&!HANDS.pinch[i]){const cam=renderer.xr.getCamera(camera);cam.getWorldPosition(_cp);_c.copy(ti).sub(_cp).normalize();
+      if(CHK.active)endCheckin(CHK.sel);else if(GAME.guessActive)lockGuess(GAME.guessSel);else selectFromRay(_cp.clone(),_c.clone());}
+    HANDS.pinch[i]=p;});
+  HANDS.active=any;
+  if(any&&S.game.on&&S.mode==='day'){HANDS.spawnT-=dt;if(HANDS.spawnT<=0&&HANDS.items.length<2){HANDS.spawnT=14+Math.random()*12;spawnHandToken();}}
+  for(let k=HANDS.items.length-1;k>=0;k--){const m=HANDS.items[k],u=m.userData;u.t+=dt;const f=Math.min(1,u.t/2.5),e=1-Math.pow(1-f,3);
+    m.position.set(u.tx,u.ty+0.4*(1-e)+Math.sin(u.t*2)*0.015,-5+(5+u.tz)*e);m.rotation.y+=dt*2;
+    const wp=m.getWorldPosition(_c);let hit=tips.some(t=>t.distanceTo(wp)<0.09);
+    if(hit||u.t>11){rig.remove(m);HANDS.items.splice(k,1);if(hit){S.game.score+=25;S.game.caught++;pulseAll(0.6,80);ding(true);checkRewards();save();renderGame();drawHUD();}}}
+}
+
 const DESK={on:false,sway:0};
 const PHONE={on:false,mode:'',have:false,ori:null,yaw0:null,dwellObj:null,dwellT:0};
 function immersive(){return renderer.xr.isPresenting||DESK.on||PHONE.on;}
@@ -1377,7 +1489,7 @@ renderer.setAnimationLoop(()=>{
       if(a&&!prev.a)lockGuess(GAME.guessSel); else if(b&&!prev.b)lockGuess(null);
       if(Math.abs(ax)>0.6){if(!prev.held){GAME.guessSel+=ax>0?1:-1;drawHUD();}padPrev[k]={a,b,st,held:true};}else padPrev[k]={a,b,st,held:false};
       continue;}
-    if(a&&!prev.a)nextClip(); if(b&&!prev.b)togglePlay(); if(st&&!prev.st){addMarker();const h=gp.hapticActuators&&gp.hapticActuators[0];if(h&&h.pulse)h.pulse(0.7,120);} padPrev[k]={a,b,st};
+    if(a&&!prev.a){if(S.mode==='pano')nextClip();else if(S.mode==='day')setCarriage(!CAR.on);} if(b&&!prev.b)togglePlay(); if(st&&!prev.st){addMarker();const h=gp.hapticActuators&&gp.hapticActuators[0];if(h&&h.pulse)h.pulse(0.7,120);} padPrev[k]={a,b,st};
     if(S.mode==='pano'&&Math.abs(ax)>0.25)setYaw(clipYaw-ax*60*dt);}}
   if(immersive()){CHK.vrTime+=dt;if(!CHK.active&&CHK.vrTime>=CHK.next)startCheckin();}
   if(CHK.active){CHK.since+=dt;if(CHK.since>60)endCheckin(0);}
@@ -1398,11 +1510,14 @@ renderer.setAnimationLoop(()=>{
   if(markFlash>0)markFlash-=dt;
   updAudio();
   hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();updPoi(routeState(nowMin()));checkGuess(routeState(nowMin()));if((GAME.boardT=(GAME.boardT||0)+1)%20===0)renderGame();
-    if(ARR.cur&&!ARR.done[ARR.cur.name]){ARR.done[ARR.cur.name]=1;pulseAll(0.6,250);}
+    if(ARR.cur&&!ARR.done[ARR.cur.name]){ARR.done[ARR.cur.name]=1;pulseAll(0.6,250);const li=liveInfo[ARR.cur.name]||{};say('Next stop: '+ARR.cur.name.replace(/ C$/,' Central')+(li.track?', track '+li.track:'')+'.',true);}
     if(WAKE.v>0&&WAKE.mins>0&&!WAKE.buzzed){WAKE.buzzed=true;if(S.mode==='night')pulseAll(0.4,400);}}
   if(PHONE.on)phoneDwell(dt);
   hud.scale.setScalar(PHONE.on&&camera.aspect<1?Math.max(0.5,camera.aspect*1.15):1);
+  handsUpdate(dt);
   if(PHONE.mode==='cardboard')renderStereo();else renderer.render(scene,camera);
+  if(WANT_SHOT&&!renderer.xr.isPresenting){const hv=hud.visible;hud.visible=false;if(PHONE.mode==='cardboard')renderStereo();else renderer.render(scene,camera);capturePostcard();hud.visible=hv;}
+  else if(WANT_SHOT)capturePostcard();
 });
 
 /* ---------- live panel ---------- */
@@ -1488,10 +1603,10 @@ if(navigator.xr&&navigator.xr.isSessionSupported){
 let session=null;
 vrBtn.onclick=async()=>{
   if(session){session.end();return;}
-  if(SND.on)initAudio();
-  try{session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor']});
+  if(SND.on)initAudio();primeVoice();
+  try{session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','hand-tracking']});
     await renderer.xr.setSession(session);
-    vrBtn.textContent='Exit VR';vrStatus.textContent='Trigger: scene/select · grip: HUD · stick click: marker · A/X: next clip · B/Y: play/pause';
+    vrBtn.textContent='Exit VR';vrStatus.textContent='Trigger: scene/select · grip: HUD · stick click: marker · A/X: carriage (day) or next clip (360) · hands: pinch to select';
     session.addEventListener('end',()=>{session=null;vrBtn.textContent='Enter VR';vrStatus.textContent='VR ended.';resize();});
   }catch(err){session=null;vrStatus.textContent='VR could not start ('+(err.name||'error')+'). If this page is shown inside claude.ai, the frame may block VR; open the standalone file instead.';}
 };
@@ -1520,7 +1635,7 @@ $('#tests').addEventListener('click',e=>{
 });
 $('#tests').addEventListener('input',e=>{const card=e.target.closest('.test');const f=e.target.dataset.f;if(!card||!f)return;tstate(card.dataset.id)[f]=e.target.value;save();});
 const SCENE_NAME={day:'Day',cinema:'Cinema',night:'Night',pano:'360/Window'};
-function snap(){const f=liveFresh();return {time:clockNow(),iso:new Date().toISOString(),where:whereText(),speed:Math.round(sceneSpeed()),src:S.liveSpeed&&f?'live':'sim',lat:f&&LIVE.lat?+LIVE.lat.toFixed(5):'',lon:f&&LIVE.lon?+LIVE.lon.toFixed(5):'',scene:SCENE_NAME[S.mode],vr:renderer.xr.isPresenting?'yes':PHONE.on?PHONE.mode:DESK.on?'desktop':'no',turn:Math.round(CURVE.rate*10)/10,curves:CURVE.on?'synced':'off'};}
+function snap(){const f=liveFresh();return {time:clockNow(),iso:new Date().toISOString(),where:whereText(),speed:Math.round(sceneSpeed()),src:S.liveSpeed&&f?'live':'sim',lat:f&&LIVE.lat?+LIVE.lat.toFixed(5):'',lon:f&&LIVE.lon?+LIVE.lon.toFixed(5):'',scene:SCENE_NAME[S.mode],vr:renderer.xr.isPresenting?'yes':PHONE.on?PHONE.mode:DESK.on?'desktop':'no',turn:Math.round(CURVE.rate*10)/10,curves:CURVE.on?'synced':'off',carriage:CAR.on&&S.mode==='day'?'carriage':'open'};}
 function renderNotes(){$('#noteList').innerHTML=S.notes.map((n,i)=>'<li><span class="when">'+n.time+(n.where?'<br>'+esc(n.where):'')+(n.speed!==undefined?'<br>'+n.speed+' km/h · '+esc(n.scene||''):'')+'</span><span>'+(n.marker?'<span class="mk">VR marker</span><input type="text" id="mk-'+i+'" data-mk="'+i+'" value="'+esc(n.text)+'" placeholder="What did you feel here?" aria-label="Marker comment">':esc(n.text))+'</span></li>').join('')||'<li><span class="when">–</span><span class="note">No notes yet.</span></li>';}
 function addNote(){const v=$('#noteTxt').value.trim();if(!v)return;S.notes.unshift(Object.assign(snap(),{text:v}));$('#noteTxt').value='';save();renderNotes();}
 function addMarker(){S.notes.unshift(Object.assign(snap(),{text:'',marker:true}));markFlash=2.5;save();renderNotes();drawHUD();}
@@ -1529,7 +1644,7 @@ $('#noteList').addEventListener('input',e=>{const i=e.target.dataset.mk;if(i===u
 if(!S.track)S.track=[];
 setInterval(()=>{if(document.hidden&&!renderer.xr.isPresenting)return;S.track.push(snap());if(S.track.length>3000)S.track.shift();save();},30000);
 // handoff to Prime Video
-function showHandoff(o){$('#hoEyebrow').textContent=o.eyebrow;$('#hoTitle').textContent=o.title;$('#hoFilm').textContent=o.sub;
+function showHandoff(o){(document.fullscreenElement===view?view:document.body).appendChild($('#handoff'));if(document.pointerLockElement)document.exitPointerLock();$('#hoEyebrow').textContent=o.eyebrow;$('#hoTitle').textContent=o.title;$('#hoFilm').textContent=o.sub;
   const go=$('#hoGo');go.href=o.href;go.textContent=o.cta;$('#hoSteps').innerHTML=o.steps.map(x=>'<li>'+x+'</li>').join('');$('#handoff').hidden=false;
   const ses=renderer.xr.getSession&&renderer.xr.getSession();if(ses)ses.end().catch(()=>{});}
 function handoff(f){S.notes.unshift(Object.assign(snap(),{text:'Cinema handoff to Prime Video · '+f.t}));save();renderNotes();
@@ -1547,9 +1662,9 @@ if('serviceWorker' in navigator&&location.protocol==='https:'&&!/claude/.test(lo
 $('#noteBtn').onclick=addNote;$('#noteTxt').addEventListener('keydown',e=>{if(e.key==='Enter')addNote();});
 function csvCell(v){v=String(v==null?'':v);return /[,"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function buildCSV(){
-  const rows=[['Type','Test','Start','Stop','Position','Motion sickness','Tracking','Comfort','Experience','Wi-Fi','Battery %','Note','Speed km/h','Speed source','Lat','Lon','Scene','In VR','Timestamp','Turn deg/s','Curves']];
+  const rows=[['Type','Test','Start','Stop','Position','Motion sickness','Tracking','Comfort','Experience','Wi-Fi','Battery %','Note','Speed km/h','Speed source','Lat','Lon','Scene','In VR','Timestamp','Turn deg/s','Curves','View']];
   TESTS.forEach(T=>{const s=tstate(T.id);rows.push(['Test',T.t,s.start,s.end,s.where,s.sick||'',s.track||'',s.comfort||'',s.wow||'',s.wifi,s.batt,s.note]);});
-  const ext=n=>[n.speed,n.src,n.lat,n.lon,n.scene,n.vr,n.iso,n.turn,n.curves];
+  const ext=n=>[n.speed,n.src,n.lat,n.lon,n.scene,n.vr,n.iso,n.turn,n.curves,n.carriage];
   S.notes.slice().reverse().forEach(n=>rows.push([n.marker?'Marker':n.checkin!==undefined?'Check-in':'Note','',n.time,'',n.where,n.checkin||'','','','','','',n.text].concat(ext(n))));
   (S.track||[]).forEach(n=>rows.push(['Track','',n.time,'',n.where,'','','','','','',''].concat(ext(n))));
   return rows.map(r=>r.map(csvCell).join(',')).join('\n');
@@ -1565,6 +1680,9 @@ $('#clearBtn').onclick=()=>{const b=$('#clearBtn');if(!clearArm){clearArm=true;b
 /* init */
 $('#buildTag').textContent=BUILD;
 $('#snowBtn').onclick=()=>setSnow(!WORLD.snow);
+$('#carBtn').onclick=()=>setCarriage(!CAR.on);$('#voiceBtn').onclick=()=>setVoice(!VOICE.on);$('#shotBtn').onclick=requestPostcard;
+$('#phoneShot').onclick=e=>{e.stopPropagation();requestPostcard();};$('#pcClose').onclick=()=>{$('#postcard').hidden=true;};
+$('#deskBtn').addEventListener('click',primeVoice);$('#phoneBtn').addEventListener('click',primeVoice);$('#cardBtn').addEventListener('click',primeVoice);
 S.game=Object.assign({on:true,name:'',journey:'',score:0,caught:0,stamps:{},guess:null,guessResult:null,rewards:[]},S.game||{});
 $('#gameName').value=S.game.name||'';$('#gameName').oninput=e=>{S.game.name=e.target.value.trim();save();renderGame();};
 $('#gameOnBtn').onclick=()=>{S.game.on=!S.game.on;save();renderGame();drawHUD();};
@@ -1572,7 +1690,8 @@ $('#gameGuessBtn').onclick=()=>{const v=$('#gameGuess').value;if(!/^\d\d:\d\d$/.
 let resetArm=false;$('#gameReset').onclick=()=>{const b=$('#gameReset');if(!resetArm){resetArm=true;b.textContent='Click again to reset';setTimeout(()=>{resetArm=false;b.textContent='Reset game';},3000);return;}resetGame(S.game.journey);renderGame();drawHUD();resetArm=false;b.textContent='Reset game';};
 $('#bridgeTxt').value=BRIDGE_CODE;
 $('#bridgeCopy').onclick=()=>{const t=$('#bridgeTxt');navigator.clipboard.writeText(t.value).then(()=>{$('#bridgeCopy').textContent='Copied';setTimeout(()=>$('#bridgeCopy').textContent='Copy bridge code',1500);}).catch(()=>{t.focus();t.select();});};
-renderTests();renderNotes();setHud(true);setMoving(true);setLiveSpeed(S.liveSpeed!==false);loadPreset();setMode('day');resize();updRouteNow();
+setVoice(S.voice!==false);CAR.on=!!S.carriage;
+renderTests();renderNotes();setHud(true);setMoving(true);setLiveSpeed(S.liveSpeed!==false);loadPreset();setMode('day');setCarriage(CAR.on);resize();updRouteNow();
 })();
 </script>
 
