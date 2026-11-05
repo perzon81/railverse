@@ -148,7 +148,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 
 <main class="wrap">
   <div class="stage">
-    <div class="view" id="view"><div class="reticle" aria-hidden="true"></div><div class="reticle eye l" aria-hidden="true"></div><div class="reticle eye r" aria-hidden="true"></div><div class="splitline" aria-hidden="true"></div><button class="phonex" id="phoneExit">✕ Exit</button><div class="keys" id="keysHelp"><b>Mouse</b> look around · <b>Click / Space</b> select or catch<br><b>← → ↑ ↓</b> look · <b>1–4</b> scene · <b>H</b> HUD · <b>M</b> marker<br><b>N</b> next clip · <b>P</b> play/pause · <b>C</b> curves<br>In questions: <b>← →</b> choose · <b>Enter</b> confirm · <b>X</b> skip<br><b>Esc</b> exits full screen · <b>K</b> hides this</div><div class="hint">Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker</div></div>
+    <div class="view" id="view"><div class="reticle" aria-hidden="true"></div><div class="reticle eye l" aria-hidden="true"></div><div class="reticle eye r" aria-hidden="true"></div><div class="splitline" aria-hidden="true"></div><button class="phonex" id="phoneExit">✕ Exit</button><div class="keys" id="keysHelp"><b>Mouse</b> look around · <b>Click / Space</b> select or catch<br><b>← → ↑ ↓</b> look · <b>1–4</b> scene · <b>H</b> HUD · <b>M</b> marker<br><b>N</b> next clip · <b>P</b> play/pause · <b>C</b> curves<br>Demo: <b>T</b> train · <b>G</b> station · <b>E</b> moose · <b>B</b> birds · <b>S</b> snow<br>In questions: <b>← →</b> choose · <b>Enter</b> confirm · <b>X</b> skip<br><b>Esc</b> exits full screen · <b>K</b> hides this</div><div class="hint">Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker</div></div>
     <div class="vrrow">
       <button class="btn primary" id="vrBtn" disabled>Enter VR</button>
       <button class="btn" id="deskBtn">Full screen · no headset</button>
@@ -169,6 +169,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
         <button class="chip" id="hudBtn" aria-pressed="true">HUD on</button>
         <button class="chip" id="curveBtn" aria-pressed="true">Curves synced</button>
         <button class="chip" id="soundBtn" aria-pressed="true">Sound on</button>
+        <button class="chip" id="snowBtn" aria-pressed="false">Snow off</button>
         <button class="chip" id="poiBtn" aria-pressed="true">Sights on</button>
       </div>
       <div class="row">
@@ -336,7 +337,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v19 · 5 Nov 23:10';
+const BUILD='v20 · 5 Nov 23:40';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  sj:{tv:{train:'159',from:'Västerås',to:'Skövde'},tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
@@ -837,6 +838,7 @@ function setMode(m){
   S.mode=m;dayG.visible=m==='day';cineG.visible=m==='cinema';nightG.visible=m==='night';panoG.visible=m==='pano';
   scene.background=new THREE.Color(m==='day'?'#9fb6c9':m==='night'?'#050a1c':'#04081a');
   scene.fog=m==='day'?new THREE.Fog('#c3d2e2',120,600):null;
+  try{WORLD.skyT=0;}catch(e){}
   if(m==='cinema'){hud.position.set(-1.15,-0.05,-0.95);hud.rotation.set(-0.1,0.85,0);}else{hud.position.set(0,m==='night'?-0.5:-0.42,m==='night'?-1.0:-1.3);hud.rotation.set(-0.32,0,0);}
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));
   drawHUD();
@@ -944,6 +946,7 @@ document.addEventListener('keydown',e=>{
   const m={'1':'day','2':'cinema','3':'night','4':'pano'}[k];if(m){setMode(m);return;}
   const l=k.toLowerCase();
   if(l==='k'||k==='?'){const kh=$('#keysHelp');kh.classList.toggle('off');view.classList.toggle('helpoff',kh.classList.contains('off'));return;}
+  if(l==='t'){setMode('day');spawnTrain();return;} if(l==='e'){setMode('day');spawnAnimals('moose');return;} if(l==='b'){setMode('day');spawnBirds();return;} if(l==='g'){setMode('day');const st=routeState(nowMin());spawnStation(st&&st.next?st.next.name:'Örebro C');return;} if(l==='s'){setSnow(!WORLD.snow);return;}
   if(l==='h')setHud(!S.hud);else if(l==='m')addMarker();else if(l==='n')nextClip();else if(l==='p')togglePlay();else if(l==='c')setCurve(!CURVE.on);
 });
 document.addEventListener('keyup',e=>{delete keysDown[e.key];});
@@ -1026,6 +1029,130 @@ function updAudio(){
     while(SND.nextClack<t+0.2){const vol=(day?0.18:0.07)*Math.min(1,v/100);clack(SND.nextClack,vol);clack(SND.nextClack+0.105,vol*0.8);SND.nextClack+=Math.max(0.25,26/(v/3.6));}}
 }
 document.addEventListener('pointerdown',()=>{if(SND.on)initAudio();},{once:true});
+
+/* ---------- Living world: real sky, oncoming trains, stations with real names, animals, snow ---------- */
+const WORLD={skyT:0,night:0,trainT:45,animalT:12,birdT:30,train:null,platform:null,stnDone:{},animals:[],flocks:[],snow:false,lastSunKey:''};
+const sky=farD.children[0];
+// --- sun position (approximate NOAA formula) ---
+function sunPos(date,lat,lon){const r=Math.PI/180,d=(date-Date.UTC(2000,0,1,12))/864e5,g=(357.529+0.98560028*d)*r,q=280.459+0.98564736*d;
+  const L=(q+1.915*Math.sin(g)+0.020*Math.sin(2*g))*r,e=(23.439-0.00000036*d)*r,ra=Math.atan2(Math.cos(e)*Math.sin(L),Math.cos(L)),dec=Math.asin(Math.sin(e)*Math.sin(L));
+  const gmst=((18.697374558+24.06570982441908*d)%24+24)%24,H=(gmst*15+lon)*r-ra;
+  const el=Math.asin(Math.sin(lat*r)*Math.sin(dec)+Math.cos(lat*r)*Math.cos(dec)*Math.cos(H));
+  const az=Math.atan2(-Math.sin(H),Math.tan(dec)*Math.cos(lat*r)-Math.sin(lat*r)*Math.cos(H));return {el:el/r,az:(az/r+360)%360};}
+const PAL={day:['#2f5fa8','#79a3d6','#d8e6f2','#9fb6c9','#3d5a46'],gold:['#33579a','#b89a92','#ffd39a','#9fa9b3','#3a4a3e'],dusk:['#1b2453','#5a4478','#ff9a5a','#4a4a63','#1e2630'],night:['#050a1c','#0b1433','#1c2a55','#141b33','#070b14']};
+function mixHex(a,b,t){const ca=new THREE.Color(a),cb=new THREE.Color(b);return '#'+ca.lerp(cb,t).getHexString();}
+function mixPal(a,b,t){return a.map((c,i)=>mixHex(c,b[i],t));}
+function skyPalette(el){if(el>=12)return PAL.day;if(el>=2)return mixPal(PAL.gold,PAL.day,(el-2)/10);if(el>=-3)return mixPal(PAL.dusk,PAL.gold,(el+3)/5);if(el>=-9)return mixPal(PAL.night,PAL.dusk,(el+9)/6);return PAL.night;}
+const starsD=(()=>{const sp=[];for(let i=0;i<1600;i++){const u=Math.random()*Math.PI*2,v=Math.acos(Math.random()*0.95);sp.push(470*Math.sin(v)*Math.cos(u),470*Math.cos(v)-10,470*Math.sin(v)*Math.sin(u));}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));const p=new THREE.Points(g,new THREE.PointsMaterial({color:'#ffffff',size:1.4,sizeAttenuation:false,transparent:true,opacity:0,fog:false,depthWrite:false}));farD.add(p);return p;})();
+const dayDim=new THREE.Mesh(new THREE.SphereGeometry(2.4,24,12),new THREE.MeshBasicMaterial({color:'#020616',transparent:true,opacity:0,side:THREE.BackSide,depthWrite:false}));dayDim.renderOrder=5;dayG.add(dayDim);
+function updSky(){
+  const st=routeState(nowMin()),ep=estPos(st),pos=ep&&ep.pos?ep.pos:(stations.length&&coordOf(stations[0].name))||[59.33,18.06];
+  const sp=sunPos(Date.now(),pos[0],pos[1]),head=headingNow(ep);const rel=((sp.az-(head===null?180:head))+360)%360*Math.PI/180,er=sp.el*Math.PI/180;
+  sun.position.set(Math.sin(rel)*Math.cos(er)*380,Math.sin(er)*380,-Math.cos(rel)*Math.cos(er)*380);
+  sun.visible=sp.el>-3;const warm=Math.max(0,Math.min(1,1-sp.el/15));sun.material.color.set(mixHex('#ffffff','#ffb27a',warm));sun.scale.setScalar(120+warm*60);
+  const pal=skyPalette(sp.el),c=skyTex.image.getContext('2d'),h=skyTex.image.height,g=c.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,pal[0]);g.addColorStop(.36,pal[1]);g.addColorStop(.5,pal[2]);g.addColorStop(.53,pal[3]);g.addColorStop(1,pal[4]);c.fillStyle=g;c.fillRect(0,0,skyTex.image.width,h);skyTex.needsUpdate=true;
+  WORLD.night=Math.max(0,Math.min(1,(-sp.el-1)/8));WORLD.sun=sp;
+  starsD.material.opacity=WORLD.night;clouds.forEach(c=>{c.material.color.set(mixHex('#ffffff','#2a3352',WORLD.night));c.material.opacity=0.85-0.35*WORLD.night;});dayDim.material.opacity=0.5*WORLD.night;
+  if(S.mode==='day'&&scene.fog){scene.fog.color.set(pal[2]);scene.background=new THREE.Color(pal[2]);}
+}
+// --- drifting clouds ---
+const cloudTex=canvasTex(256,128,(c,w,h)=>{for(let i=0;i<14;i++){const x=40+Math.random()*176,y=50+Math.random()*40,r=18+Math.random()*30,g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba(255,255,255,.85)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,r,0,7);c.fill();}});
+const clouds=[];for(let i=0;i<12;i++){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,transparent:true,depthWrite:false,fog:false,opacity:.85}));const a=Math.random()*Math.PI*2,r=180+Math.random()*200;
+  s.position.set(Math.cos(a)*r,90+Math.random()*80,Math.sin(a)*r);s.scale.set(140+Math.random()*80,60+Math.random()*30,1);farD.add(s);clouds.push(s);}
+// --- second track for meeting trains ---
+const deck2=new THREE.Mesh(new THREE.BoxGeometry(5,0.6,800),basic('#74777c'));deck2.position.set(4.6,-2.1,-300);dayG.add(deck2);
+[3.88,5.32].forEach(x=>{const r=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.12,800),steel);r.position.set(x,-1.7,-300);dayG.add(r);});
+addMover(dayG,new THREE.BoxGeometry(2.4,0.1,0.25),sleeper,90,i=>({x:4.6,y:-1.8,z:-260+i*3}),-260,10);
+// --- oncoming double-deck train ---
+const carTex=canvasTex(512,128,(c,w,h)=>{c.fillStyle='#eef0f3';c.fillRect(0,0,w,h);c.fillStyle='#1a2340';for(let r=0;r<2;r++)for(let i=0;i<9;i++)c.fillRect(14+i*55,16+r*46,40,26);c.fillStyle='#ff5a26';c.fillRect(0,h-18,w,8);c.fillStyle='#0a1540';c.fillRect(0,h-10,w,10);});
+const carTexN=canvasTex(512,128,(c,w,h)=>{c.fillStyle='#c9ccd2';c.fillRect(0,0,w,h);c.fillStyle='#ffd98a';for(let r=0;r<2;r++)for(let i=0;i<9;i++)c.fillRect(14+i*55,16+r*46,40,26);c.fillStyle='#ff5a26';c.fillRect(0,h-18,w,8);c.fillStyle='#0a1540';c.fillRect(0,h-10,w,10);});
+const carMatN=new THREE.MeshBasicMaterial({map:carTexN});
+const carMat=new THREE.MeshBasicMaterial({map:carTex}),carEnd=basic('#d8dbe0'),noseMat=basic('#0a1540');
+function makeTrain(){const g=new THREE.Group();const n=6,len=26;
+  for(let i=0;i<n;i++){const car=new THREE.Mesh(new THREE.BoxGeometry(3,4.3,len),[WORLD.night>0.5?carMatN:carMat,WORLD.night>0.5?carMatN:carMat,basic('#cfd3d9'),carEnd,carEnd,carEnd]);car.position.set(0,0.6,-i*(len+0.8));g.add(car);}
+  const nose=new THREE.Mesh(new THREE.BoxGeometry(2.9,3.2,4),noseMat);nose.position.set(0,0.1,len/2+1.6);nose.rotation.x=-0.18;g.add(nose);
+  const lamp=glowSprite('rgba(255,250,230,1)','rgba(255,240,200,0)',4);lamp.position.set(0,-0.8,len/2+3.8);g.add(lamp);
+  g.position.set(4.6,0,-760);g.userData={len:n*(len+0.8)};return g;}
+function horn(){if(!SND.ac||!SND.on)return;const ac=SND.ac,t=ac.currentTime;[[311,0],[370,0],[311,0.55],[370,0.55]].forEach(([f,d])=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sawtooth';o.frequency.value=f;
+  const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1200;g.gain.setValueAtTime(0.0001,t+d);g.gain.exponentialRampToValueAtTime(0.06,t+d+0.05);g.gain.setValueAtTime(0.06,t+d+0.4);g.gain.exponentialRampToValueAtTime(0.0001,t+d+0.5);
+  o.connect(lp);lp.connect(g);g.connect(SND.master);o.start(t+d);o.stop(t+d+0.55);});}
+function spawnTrain(){if(WORLD.train)return;const g=makeTrain();dayG.add(g);WORLD.train={g,horn:false};
+  if(SND.ac){const ac=SND.ac,n=ac.createBufferSource();n.buffer=SND.noise;n.loop=true;const f=ac.createBiquadFilter();f.type='bandpass';f.Q.value=0.7;f.frequency.value=400;const gg=ac.createGain();gg.gain.value=0;n.connect(f);f.connect(gg);gg.connect(SND.master);n.start();WORLD.train.snd={n,f,g:gg};}}
+// --- station platform with the real name ---
+function signTex(name,track){return canvasTex(1024,256,(c,w,h)=>{c.fillStyle='#0a3a8c';c.fillRect(0,0,w,h);c.strokeStyle='#ffffff';c.lineWidth=10;c.strokeRect(10,10,w-20,h-20);
+  c.fillStyle='#ffffff';c.font='bold 120px Helvetica, Arial';c.textAlign='center';c.textBaseline='middle';c.fillText(name,w/2,track?h/2-18:h/2,w-80);if(track){c.font='bold 48px Helvetica, Arial';c.fillText('Track '+track,w/2,h-46);}});}
+function makePlatform(name,track){const g=new THREE.Group(),L=200;
+  const pf=new THREE.Mesh(new THREE.BoxGeometry(6,1.1,L),basic('#9a9c9f'));pf.position.set(-5.6,-1.35,-L/2);g.add(pf);
+  const edge=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.02,L),basic('#f2d32b'));edge.position.set(-2.85,-0.79,-L/2);g.add(edge);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(5,0.25,80),basic('#3b4256'));roof.position.set(-6,3.4,-60);g.add(roof);
+  for(let z=-25;z>=-95;z-=14){const p=new THREE.Mesh(new THREE.BoxGeometry(0.2,4.3,0.2),basic('#2a2f3e'));p.position.set(-7.4,1.3,z);g.add(p);}
+  const tex=signTex(name,track);for(let z=-20;z>=-180;z-=45){const s=new THREE.Mesh(new THREE.PlaneGeometry(4.2,1.05),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));s.position.set(-3.6,2.4,z);s.rotation.y=Math.PI/2;g.add(s);
+    const post=new THREE.Mesh(new THREE.BoxGeometry(0.12,2.4,0.12),basic('#2a2f3e'));post.position.set(-3.7,0.6,z);g.add(post);}
+  for(let z=-10;z>=-190;z-=30){const lp=new THREE.Mesh(new THREE.BoxGeometry(0.12,4.6,0.12),basic('#2a2f3e'));lp.position.set(-8.2,1.5,z);g.add(lp);const gl=glowSprite('rgba(255,230,180,.9)','rgba(255,210,150,0)',2.2);gl.position.set(-8,3.9,z);g.add(gl);}
+  const cols=['#ff5a26','#2f5fa8','#e9e4d8','#3d5a46','#7a3b5a','#d9a441','#1a2340'];
+  for(let i=0;i<14;i++){const p=new THREE.Group(),c=cols[i%cols.length],b=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.28,1.25,8),basic(c));b.position.y=0.62;const hd=new THREE.Mesh(new THREE.SphereGeometry(0.17,10,8),basic('#e7c8a8'));hd.position.y=1.42;p.add(b,hd);
+    if(i%4===0){const bag=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.45,0.2),basic('#1a1a1a'));bag.position.set(0.3,0.25,0);p.add(bag);}
+    p.position.set(-4.4-Math.random()*2.6,-0.8,-15-Math.random()*150);p.rotation.y=Math.PI/2+(Math.random()-.5);g.add(p);}
+  g.position.z=-420;return g;}
+function spawnStation(name){if(WORLD.platform){dayG.remove(WORLD.platform);}const li=liveInfo[name]||{};WORLD.platform=makePlatform(name,li.track||'');dayG.add(WORLD.platform);}
+// --- animals and birds ---
+function legs(g,mat,w,len,h,thick){[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{const l=new THREE.Mesh(new THREE.CylinderGeometry(thick,thick*0.8,h,6),mat);l.position.set(a*w,h/2,b*len);g.add(l);});}
+function makeMoose(){const g=new THREE.Group(),m=basic('#3b2a1e');legs(g,m,0.42,0.95,1.5,0.09);const body=new THREE.Mesh(new THREE.BoxGeometry(1.1,1.25,2.6),m);body.position.y=2.05;g.add(body);
+  const hump=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.5,0.9),m);hump.position.set(0,2.8,0.8);g.add(hump);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.6,1.1),m);head.position.set(0,2.55,1.75);head.rotation.x=0.45;g.add(head);
+  const ant=basic('#c8b48a');[-1,1].forEach(s=>{const a=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.08,0.5),ant);a.position.set(s*0.6,3.15,1.45);a.rotation.z=s*0.35;g.add(a);});return g;}
+function makeDeer(){const g=new THREE.Group(),m=basic('#8a5a34');legs(g,m,0.2,0.45,0.85,0.05);const b=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.6,1.3),m);b.position.y=1.15;g.add(b);
+  const n=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.7,0.25),m);n.position.set(0,1.65,0.6);n.rotation.x=0.3;g.add(n);const hd=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.26,0.45),m);hd.position.set(0,2.0,0.78);g.add(hd);
+  const tail=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,0.1),basic('#f2ede4'));tail.position.set(0,1.3,-0.68);g.add(tail);return g;}
+const cowTex=canvasTex(128,64,(c,w,h)=>{c.fillStyle='#f4f1ea';c.fillRect(0,0,w,h);c.fillStyle='#1d1d1f';for(let i=0;i<7;i++){c.beginPath();c.ellipse(Math.random()*w,Math.random()*h,8+Math.random()*14,6+Math.random()*10,Math.random()*3,0,7);c.fill();}});
+function makeCow(){const g=new THREE.Group(),m=new THREE.MeshBasicMaterial({map:cowTex});legs(g,basic('#e8e4da'),0.3,0.6,0.8,0.08);const b=new THREE.Mesh(new THREE.BoxGeometry(0.85,0.85,1.9),m);b.position.y=1.2;g.add(b);
+  const hd=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.45,0.55),basic('#1d1d1f'));hd.position.set(0,1.35,1.15);g.add(hd);return g;}
+function nearPoi(id,km){const ep=estPos(routeState(nowMin()));const p=POIS.find(x=>x.id===id);return ep&&p?distKm(ep.pos,p.trig)<km:false;}
+function spawnAnimals(kind){
+  const forest=kind==='moose'||(!kind&&(nearPoi('tiveden',25)||Math.random()<0.35));const k=kind||(forest?(Math.random()<.5?'moose':'deer'):(Math.random()<.6?'cow':'deer'));
+  const side=Math.random()<.5?-1:1,x=side*(16+Math.random()*30),grp=new THREE.Group(),n=k==='cow'?3+(Math.random()*4|0):k==='deer'?2+(Math.random()*3|0):1+(Math.random()*2|0);
+  for(let i=0;i<n;i++){const a=k==='moose'?makeMoose():k==='deer'?makeDeer():makeCow();a.position.set((Math.random()-.5)*8,0,(Math.random()-.5)*10);a.rotation.y=Math.random()*Math.PI*2;a.userData.ph=Math.random()*6;grp.add(a);}
+  grp.position.set(x,-1.9,-380);dayG.add(grp);WORLD.animals.push(grp);
+}
+const birdTex=canvasTex(64,32,(c,w,h)=>{c.strokeStyle='#1d2433';c.lineWidth=4;c.lineCap='round';c.beginPath();c.moveTo(4,22);c.quadraticCurveTo(18,4,32,18);c.quadraticCurveTo(46,4,60,22);c.stroke();});
+function spawnBirds(){const g=new THREE.Group(),n=9+(Math.random()*8|0),dir=Math.random()<.5?-1:1;
+  for(let i=0;i<n;i++){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:birdTex,transparent:true,depthWrite:false,fog:false}));const row=Math.ceil(i/2),side=i%2?1:-1;s.position.set(-row*2.2*dir,row*0.2+(Math.random()-.5),side*row*1.6);s.scale.set(1.6,0.8,1);s.userData.ph=Math.random()*6;g.add(s);}
+  g.position.set(-dir*160,35+Math.random()*30,-90-Math.random()*90);g.userData={v:dir*(9+Math.random()*5)};dayG.add(g);WORLD.flocks.push(g);}
+// --- snow ---
+const snowN=1400,snowGeo=new THREE.BufferGeometry(),snowPos=new Float32Array(snowN*3);for(let i=0;i<snowN;i++){snowPos[i*3]=(Math.random()-.5)*60;snowPos[i*3+1]=Math.random()*24-2;snowPos[i*3+2]=-Math.random()*70+8;}
+snowGeo.setAttribute('position',new THREE.BufferAttribute(snowPos,3));
+const snow=new THREE.Points(snowGeo,new THREE.PointsMaterial({color:'#ffffff',size:0.09,transparent:true,opacity:.9,depthWrite:false}));snow.visible=false;dayG.add(snow);
+function setSnow(on){WORLD.snow=on;snow.visible=on;const b=$('#snowBtn');if(b){b.setAttribute('aria-pressed',on);b.textContent=on?'Snow on':'Snow off';}}
+// --- per-frame ---
+function worldUpdate(dt){
+  WORLD.skyT-=dt;if(WORLD.skyT<=0){WORLD.skyT=20;updSky();}
+  if(S.mode!=='day')return;
+  const v=S.moving?sceneSpeed()/3.6:0,dz=v*dt;
+  clouds.forEach(c=>{c.position.x+=dt*1.2;if(c.position.x>420)c.position.x=-420;});
+  // oncoming trains
+  WORLD.trainT-=dt;if(WORLD.trainT<=0){WORLD.trainT=120+Math.random()*150;spawnTrain();}
+  if(WORLD.train){const T=WORLD.train,g=T.g;g.position.z+=dz+44*dt;const z=g.position.z,near=Math.min(Math.abs(z),Math.abs(z+g.userData.len));
+    if(!T.horn&&z>-420){T.horn=true;horn();}
+    if(T.snd){const t=SND.ac.currentTime,inside=z>0&&z-g.userData.len<0,lvl=inside?0.55:0.55/(1+Math.pow(near/45,2));T.snd.g.gain.setTargetAtTime(SND.on?lvl:0,t,0.08);T.snd.f.frequency.setTargetAtTime(inside?900:300+2000/(1+near/30),t,0.1);}
+    if(z-g.userData.len>120){dayG.remove(g);if(T.snd){try{T.snd.n.stop();}catch(e){}}WORLD.train=null;}}
+  // stations
+  const st=routeState(nowMin());
+  if(st&&st.phase==='run'&&!WORLD.stnDone[st.next.name]){let go=st.mins<=1.2;const ep=estPos(st);if(ep&&ep.live){const c=coordOf(st.next.name);if(c)go=distKm(ep.pos,c)<1.4;}
+    if(go){WORLD.stnDone[st.next.name]=1;spawnStation(st.next.name);}}
+  if(WORLD.platform){WORLD.platform.position.z+=dz;if(WORLD.platform.position.z>260){dayG.remove(WORLD.platform);WORLD.platform=null;}}
+  // animals
+  WORLD.animalT-=dt;if(WORLD.animalT<=0){WORLD.animalT=25+Math.random()*30;if(v>3)spawnAnimals();}
+  for(let i=WORLD.animals.length-1;i>=0;i--){const g=WORLD.animals[i];g.position.z+=dz;g.children.forEach(a=>{a.userData.ph+=dt;a.rotation.x=Math.sin(a.userData.ph*0.7)*0.03;});if(g.position.z>40){dayG.remove(g);WORLD.animals.splice(i,1);}}
+  // birds
+  WORLD.birdT-=dt;if(WORLD.birdT<=0){WORLD.birdT=60+Math.random()*60;spawnBirds();}
+  for(let i=WORLD.flocks.length-1;i>=0;i--){const g=WORLD.flocks[i];g.position.x+=g.userData.v*dt;g.position.z+=dz*0.15;g.children.forEach(s=>{s.userData.ph+=dt*7;s.scale.y=0.8*(0.55+0.45*Math.abs(Math.sin(s.userData.ph)));});
+    if(Math.abs(g.position.x)>200){dayG.remove(g);WORLD.flocks.splice(i,1);}}
+  // snow follows the camera and drifts towards it with the train
+  if(WORLD.snow){const a=snowGeo.attributes.position.array;for(let i=0;i<snowN;i++){a[i*3+1]-=dt*(1.1+(i%5)*0.15);a[i*3]+=Math.sin(i+performance.now()/900)*dt*0.2;a[i*3+2]+=dz*0.9+dt*0.3;
+      if(a[i*3+1]<-2)a[i*3+1]+=24;if(a[i*3+2]>8)a[i*3+2]-=70;}snowGeo.attributes.position.needsUpdate=true;}
+}
 
 /* ---------- Route game (demo): catch tokens, collect stamps, guess the arrival, win bistro credits ---------- */
 const GAME={spawnT:4,items:[],fx:[],guessActive:false,guessSel:0,guessAsked:false,cardT:0};
@@ -1172,6 +1299,7 @@ renderer.setAnimationLoop(()=>{
   if(immersive()&&S.game.on&&S.game.guess==null&&!GAME.guessAsked&&!CHK.active&&CHK.vrTime>20&&stations.length>1){const st0=routeState(nowMin());if(st0&&st0.phase!=='done')startGuess();}
   if(DESK.on)deskLook(dt);
   gameUpdate(dt);
+  worldUpdate(dt);
   if(GAME.cardT>0){GAME.cardT-=dt;if(GAME.cardT<=0)gcMesh.visible=false;}
   // curves: far landscape turns with the real train
   if(!liveFresh())CURVE.target=0;
@@ -1226,7 +1354,7 @@ $('#soundBtn').onclick=()=>setSound(!SND.on);
 function setPoi(on){POI.on=on;const b=$('#poiBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'Sights on':'Sights off';}
 $('#poiBtn').onclick=()=>setPoi(!POI.on);
 // new or reversed journey: let sights, arrival cards and wake-up fire again
-function resetJourneyFlags(){try{POI.seen={};POI.cur=null;ARR.done={};WAKE.buzzed=false;}catch(e){}}
+function resetJourneyFlags(){try{POI.seen={};POI.cur=null;ARR.done={};WAKE.buzzed=false;WORLD.stnDone={};}catch(e){}}
 function setCurve(on){CURVE.on=on;const b=$('#curveBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'Curves synced':'Curves off';}
 $('#curveBtn').onclick=()=>setCurve(!CURVE.on);
 function setHud(on){S.hud=on;hud.visible=on;const b=$('#hudBtn');b.setAttribute('aria-pressed',on);b.textContent=on?'HUD on':'HUD off';}
@@ -1351,6 +1479,7 @@ $('#clearBtn').onclick=()=>{const b=$('#clearBtn');if(!clearArm){clearArm=true;b
 
 /* init */
 $('#buildTag').textContent=BUILD;
+$('#snowBtn').onclick=()=>setSnow(!WORLD.snow);
 S.game=Object.assign({on:true,name:'',journey:'',score:0,caught:0,stamps:{},guess:null,guessResult:null,rewards:[]},S.game||{});
 $('#gameName').value=S.game.name||'';$('#gameName').oninput=e=>{S.game.name=e.target.value.trim();save();renderGame();};
 $('#gameOnBtn').onclick=()=>{S.game.on=!S.game.on;save();renderGame();drawHUD();};
