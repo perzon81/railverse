@@ -39,6 +39,16 @@ main.wrap{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:2
 .reticle{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border:2px solid rgba(255,255,255,.85);border-radius:50%;box-shadow:0 0 0 2px rgba(10,21,64,.5);pointer-events:none;display:none}
 .reticle::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;background:#ff5a26;border-radius:50%}
 .desk .reticle{display:block}
+.reticle.eye{display:none}.reticle.eye.l{left:25%}.reticle.eye.r{left:75%}
+.cardboard .reticle{display:none}.cardboard .reticle.eye{display:block}
+.reticle.dwell{border-color:#ff5a26;transform:scale(1.5);transition:transform 1.2s linear}
+.splitline{position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:#000;display:none;pointer-events:none}
+.cardboard .splitline{display:block}
+.phonex{position:absolute;left:max(12px, env(safe-area-inset-left, 0px));top:max(12px, env(safe-area-inset-top, 0px));display:none;font:inherit;font-weight:700;font-size:15px;color:#fff;background:rgba(7,16,51,.8);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:10px 16px;min-height:44px;cursor:pointer;z-index:2}
+.phone .phonex{display:block}
+.phone .keys{display:none!important}
+.mobileonly{display:none}
+.touch .mobileonly{display:inline-flex}
 .keys{position:absolute;right:12px;top:12px;font-size:13px;line-height:1.6;color:#fff;background:rgba(7,16,51,.78);padding:10px 14px;border-radius:12px;pointer-events:none;display:none;max-width:300px}
 .desk .keys{display:block}
 .desk .hint{display:none}
@@ -132,10 +142,12 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 
 <main class="wrap">
   <div class="stage">
-    <div class="view" id="view"><div class="reticle" aria-hidden="true"></div><div class="keys" id="keysHelp"><b>Mouse</b> look around · <b>Click / Space</b> select or catch<br><b>← → ↑ ↓</b> look · <b>1–4</b> scene · <b>H</b> HUD · <b>M</b> marker<br><b>N</b> next clip · <b>P</b> play/pause · <b>C</b> curves<br>In questions: <b>← →</b> choose · <b>Enter</b> confirm · <b>X</b> skip<br><b>Esc</b> exits full screen · <b>K</b> hides this</div><div class="hint">Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker</div></div>
+    <div class="view" id="view"><div class="reticle" aria-hidden="true"></div><div class="reticle eye l" aria-hidden="true"></div><div class="reticle eye r" aria-hidden="true"></div><div class="splitline" aria-hidden="true"></div><button class="phonex" id="phoneExit">✕ Exit</button><div class="keys" id="keysHelp"><b>Mouse</b> look around · <b>Click / Space</b> select or catch<br><b>← → ↑ ↓</b> look · <b>1–4</b> scene · <b>H</b> HUD · <b>M</b> marker<br><b>N</b> next clip · <b>P</b> play/pause · <b>C</b> curves<br>In questions: <b>← →</b> choose · <b>Enter</b> confirm · <b>X</b> skip<br><b>Esc</b> exits full screen · <b>K</b> hides this</div><div class="hint">Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker</div></div>
     <div class="vrrow">
       <button class="btn primary" id="vrBtn" disabled>Enter VR</button>
       <button class="btn" id="deskBtn">Full screen · no headset</button>
+      <button class="btn mobileonly" id="phoneBtn">Phone · tilt to look</button>
+      <button class="btn mobileonly" id="cardBtn">Cardboard 3D</button>
       <div class="status" id="vrStatus">Checking WebXR…</div>
     </div>
     <div class="chips" role="group" aria-label="Scene">
@@ -318,7 +330,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v18 · 5 Nov 22:50';
+const BUILD='v19 · 5 Nov 23:10';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  sj:{tv:{train:'159',from:'Västerås',to:'Skövde'},tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
@@ -803,10 +815,10 @@ function drawHUD(){
     c.fillStyle='#fff';c.font='bold 44px '+F;c.fillText('When do we arrive in '+(stations.length?stations[stations.length-1].name:'')+'?',44,120,W-88);
     c.textAlign='center';c.font='bold 120px '+F;c.fillText(hhmm(GAME.guessSel),W/2,280);
     c.font='bold 64px '+F;c.fillStyle='#ff5a26';c.fillText('‹',W/2-250,272);c.fillText('›',W/2+250,272);
-    c.fillStyle='#a9b4d6';c.font='24px '+F;c.fillText('Stick ← → ±1 min · A/X lock guess · B/Y skip · closest guess wins up to 100 pts',W/2,380,W-88);c.textAlign='left';}
+    c.fillStyle='#a9b4d6';c.font='24px '+F;c.fillText(promptHint('guess'),W/2,380,W-88);c.textAlign='left';}
   if(CHK.active){rr(c,4,4,W-8,H-8,40);c.fillStyle='rgba(10,21,64,0.97)';c.fill();
     c.fillStyle='#fff';c.font='bold 46px '+F;c.textAlign='left';c.fillText('How do you feel right now?',44,92);
-    c.fillStyle='#a9b4d6';c.font='24px '+F;c.fillText('Motion sickness · stick ← → to choose · A/X confirm · B/Y skip',44,136);
+    c.fillStyle='#a9b4d6';c.font='24px '+F;c.fillText(promptHint('chk'),44,136,W-88);
     const bw=172,gap=14,x0=(W-(bw*5+gap*4))/2;
     CHK_LABELS.forEach((lb,i)=>{const x=x0+i*(bw+gap),on=CHK.sel===i+1;rr(c,x,170,bw,190,22);c.fillStyle=on?'#ff5a26':'#17275f';c.fill();
       c.fillStyle='#fff';c.textAlign='center';c.font='bold 72px '+F;c.fillText(String(i+1),x+bw/2,262);c.font=(on?'bold ':'')+'22px '+F;c.fillText(lb,x+bw/2,322);});
@@ -840,12 +852,72 @@ let yaw=0,pitch=0,drag=null;
 view.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};view.setPointerCapture(e.pointerId);});
 view.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*0.005;pitch+=(e.clientY-drag.y)*0.005;pitch=Math.max(-1.3,Math.min(1.3,pitch));drag={x:e.clientX,y:e.clientY};});
 view.addEventListener('pointerdown',e=>{view._down={x:e.clientX,y:e.clientY};});
-view.addEventListener('pointerup',e=>{drag=null;if(document.pointerLockElement===view)return;const d=view._down;if(!d||S.mode!=='cinema'||Math.hypot(e.clientX-d.x,e.clientY-d.y)>5)return;
+view.addEventListener('pointerup',e=>{drag=null;if(document.pointerLockElement===view||PHONE.on)return;const d=view._down;if(!d||S.mode!=='cinema'||Math.hypot(e.clientX-d.x,e.clientY-d.y)>5)return;
   const r=view.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);const h=ray.intersectObjects(cineTargets,false)[0];if(h)activateCinema(h.object);});
-view.addEventListener('click',e=>{if(DESK.on){if(document.pointerLockElement!==view){try{const r=view.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(x){}}else{centerSelect();}return;}
+view.addEventListener('click',e=>{if(PHONE.on){if(!e.target.closest('#phoneExit'))phoneTap(e);return;}
+  if(DESK.on){if(document.pointerLockElement!==view){try{const r=view.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(x){}}else{centerSelect();}return;}
   if(S.mode==='day'&&S.game.on){const r=view.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);
     const h=ray.intersectObjects(GAME.items,true)[0];if(h){let o=h.object;while(o.parent&&o.parent!==itemsG)o=o.parent;catchItem(o);}return;}
   if(S.mode!=='pano')return;const r=view.getBoundingClientRect(),v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,camera);if(ray.intersectObject(ytSign,false).length)handoffYT();});view.addEventListener('pointercancel',()=>drag=null);
+/* ---------- phone modes: tilt-to-look and Cardboard 3D ---------- */
+const zee=new THREE.Vector3(0,0,1),qTmp=new THREE.Quaternion(),qDev=new THREE.Quaternion(),qBack=new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5)),eulD=new THREE.Euler(),qYaw=new THREE.Quaternion(),yAxis=new THREE.Vector3(0,1,0);
+window.addEventListener('deviceorientation',e=>{if(e.alpha==null&&e.beta==null)return;PHONE.ori=e;PHONE.have=true;},true);
+function phoneCamera(){
+  const o=PHONE.ori,r=Math.PI/180,ang=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*r;
+  eulD.set((o.beta||0)*r,(o.alpha||0)*r,-(o.gamma||0)*r,'YXZ');qDev.setFromEuler(eulD);qDev.multiply(qBack);qDev.multiply(qTmp.setFromAxisAngle(zee,-ang));
+  if(PHONE.yaw0===null){const e2=new THREE.Euler().setFromQuaternion(qDev,'YXZ');PHONE.yaw0=e2.y;}
+  qYaw.setFromAxisAngle(yAxis,yaw-PHONE.yaw0);camera.quaternion.copy(qYaw).multiply(qDev);
+}
+const stereo=new THREE.StereoCamera();stereo.eyeSep=0.064;stereo.cameraL.layers.enable(1);stereo.cameraR.layers.enable(2);
+function renderStereo(){
+  camera.updateMatrixWorld();stereo.update(camera);const sz=renderer.getSize(new THREE.Vector2()),w=sz.x/2;
+  renderer.setScissorTest(true);
+  renderer.setScissor(0,0,w,sz.y);renderer.setViewport(0,0,w,sz.y);renderer.render(scene,stereo.cameraL);
+  renderer.setScissor(w,0,w,sz.y);renderer.setViewport(w,0,w,sz.y);renderer.render(scene,stereo.cameraR);
+  renderer.setScissorTest(false);renderer.setViewport(0,0,sz.x,sz.y);
+}
+// look at a poster, the screen or the YouTube sign for 1.2 s to select it (no buttons needed)
+function phoneDwell(dt){
+  ray.setFromCamera(new THREE.Vector2(0,0),camera);let hit=null;
+  if(S.mode==='cinema'){const h=ray.intersectObjects(cineTargets,false)[0];if(h&&!(h.object.userData.play&&selFilm<0)&&!(h.object.userData.film===selFilm))hit=h.object;}
+  else if(S.mode==='pano'){if(ray.intersectObject(ytSign,false).length)hit=ytSign;}
+  const rets=view.querySelectorAll('.reticle');
+  if(hit&&hit===PHONE.dwellObj){PHONE.dwellT+=dt;if(PHONE.dwellT>1.2){PHONE.dwellT=-1.5;if(hit===ytSign)handoffYT();else activateCinema(hit);}}
+  else{PHONE.dwellObj=hit;PHONE.dwellT=0;}
+  rets.forEach(r=>r.classList.toggle('dwell',!!hit&&PHONE.dwellT>0));
+  if(PHONE.mode==='cardboard'&&CHK.active&&CHK.tapAt&&Date.now()-CHK.tapAt>3000){CHK.tapAt=0;endCheckin(CHK.sel);}
+  if(PHONE.mode==='cardboard'&&GAME.guessActive&&GAME.tapAt&&Date.now()-GAME.tapAt>3000){GAME.tapAt=0;lockGuess(GAME.guessSel);}
+}
+function phoneTap(e){
+  const r=view.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;
+  if(CHK.active){if(PHONE.mode==='cardboard'){CHK.sel=CHK.sel%5+1;CHK.tapAt=Date.now();}else if(x<0.33)CHK.sel=Math.max(1,CHK.sel-1);else if(x>0.67)CHK.sel=Math.min(5,CHK.sel+1);else endCheckin(CHK.sel);drawHUD();return;}
+  if(GAME.guessActive){if(PHONE.mode==='cardboard'){GAME.guessSel+=1;GAME.tapAt=Date.now();}else if(x<0.33)GAME.guessSel-=1;else if(x>0.67)GAME.guessSel+=1;else lockGuess(GAME.guessSel);drawHUD();return;}
+  centerSelect();
+}
+async function enterPhone(mode){
+  if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function'){try{await DeviceOrientationEvent.requestPermission();}catch(e){}}
+  PHONE.on=true;PHONE.mode=mode;PHONE.yaw0=null;yaw=0;pitch=0;
+  view.classList.add('phone','desk');view.classList.toggle('cardboard',mode==='cardboard');
+  try{await view.requestFullscreen({navigationUI:'hide'});}catch(e){view.classList.add('fs');}
+  if(mode==='cardboard'&&screen.orientation&&screen.orientation.lock){screen.orientation.lock('landscape').catch(()=>{});}
+  try{if(navigator.wakeLock)PHONE.lock=await navigator.wakeLock.request('screen');}catch(e){}
+  camera.fov=mode==='cardboard'?85:75;if(SND.on)initAudio();
+  view.querySelector('.hint').textContent=mode==='cardboard'?'Tap the screen (or the viewer button) to select':'Tilt to look · tap to select · drag to turn';
+  S.notes.unshift(Object.assign(snap(),{text:(mode==='cardboard'?'Cardboard 3D':'Phone tilt')+' mode started'+(PHONE.have?'':' (no motion sensor yet)')}));save();renderNotes();
+  setTimeout(resize,80);setTimeout(resize,600);drawHUD();
+}
+function exitPhone(){
+  PHONE.on=false;PHONE.mode='';view.classList.remove('phone','desk','cardboard','fs');camera.fov=72;camera.quaternion.identity();
+  if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+  try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();}catch(e){}
+  try{if(PHONE.lock){PHONE.lock.release();PHONE.lock=null;}}catch(e){}
+  view.querySelector('.hint').textContent='Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker';
+  setTimeout(resize,80);drawHUD();
+}
+$('#phoneBtn').onclick=()=>enterPhone('phone');$('#cardBtn').onclick=()=>enterPhone('cardboard');$('#phoneExit').onclick=e=>{e.stopPropagation();exitPhone();};
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&PHONE.on&&!view.classList.contains('fs'))exitPhone();});
+if(matchMedia('(pointer: coarse)').matches||('ontouchstart' in window))document.documentElement.classList.add('touch');
+
 /* ---------- desktop immersive mode (no headset) ---------- */
 function centerSelect(){
   if(CHK.active){endCheckin(CHK.sel);return;} if(GAME.guessActive){lockGuess(GAME.guessSel);return;}
@@ -880,10 +952,10 @@ async function enterDesk(){
   if(DESK.on){if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else setDesk(false);return;}
   try{await view.requestFullscreen({navigationUI:'hide'});}catch(e){view.classList.add('fs');setDesk(true);}
 }
-document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement===view)setDesk(true);else if(DESK.on&&!view.classList.contains('fs'))setDesk(false);});
+document.addEventListener('fullscreenchange',()=>{if(PHONE.on)return;if(document.fullscreenElement===view)setDesk(true);else if(DESK.on&&!view.classList.contains('fs'))setDesk(false);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&view.classList.contains('fs'))setDesk(false);});
 $('#deskBtn').onclick=enterDesk;
-function resize(){if(renderer.xr.isPresenting)return;const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+function resize(){if(renderer.xr.isPresenting)return;const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);camera.aspect=(PHONE.mode==='cardboard'?w/2:w)/h;camera.updateProjectionMatrix();}
 window.addEventListener('resize',resize);
 
 /* --- loop --- */
@@ -1052,7 +1124,13 @@ function renderGame(){
 function resetGame(jk){S.game=Object.assign(S.game||{},{journey:jk,score:0,caught:0,stamps:{},guess:null,guessResult:null,rewards:[]});GAME.guessAsked=false;GAME.items.forEach(m=>itemsG.remove(m));GAME.items=[];save();}
 
 const DESK={on:false,sway:0};
-function immersive(){return renderer.xr.isPresenting||DESK.on;}
+const PHONE={on:false,mode:'',have:false,ori:null,yaw0:null,dwellObj:null,dwellT:0};
+function immersive(){return renderer.xr.isPresenting||DESK.on||PHONE.on;}
+function promptHint(kind){
+  if(PHONE.mode==='cardboard')return kind==='chk'?'Motion sickness · tap to change · saved 3 s after your last tap':'Tap to add a minute · saved 3 s after your last tap';
+  if(PHONE.on)return kind==='chk'?'Motion sickness · tap left − · tap right + · tap the middle to confirm':'Tap left −1 min · tap right +1 min · tap the middle to lock';
+  if(DESK.on)return kind==='chk'?'Motion sickness · ← → to choose · Enter confirm · X skip':'← → ±1 min · Enter lock guess · X skip · closest guess wins up to 100 pts';
+  return kind==='chk'?'Motion sickness · stick ← → to choose · A/X confirm · B/Y skip':'Stick ← → ±1 min · A/X lock guess · B/Y skip · closest guess wins up to 100 pts';}
 const CHK={vrTime:0,next:120,active:false,sel:1,since:0,stickHeld:false};
 const CHK_LABELS=['None','Slight','Noticeable','Queasy','Severe'];
 const ARR={cur:null,done:{}};const WAKE={v:0,mins:999,buzzed:false};
@@ -1063,7 +1141,8 @@ function endCheckin(v){CHK.active=false;CHK.next=CHK.vrTime+600;
 const clock=new THREE.Clock();let hudT=0,markFlash=0;const padPrev={};
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
-  if(!renderer.xr.isPresenting){let sp=0,sr=0;
+  if(PHONE.on&&PHONE.have)phoneCamera();
+  else if(!renderer.xr.isPresenting){let sp=0,sr=0;
     if(DESK.on&&S.moving&&(S.mode==='day'||S.mode==='night')){const k=Math.min(1,sceneSpeed()/200);DESK.sway+=dt;sp=Math.sin(DESK.sway*7.3)*0.0018*k+Math.sin(DESK.sway*1.1)*0.0012*k;sr=Math.sin(DESK.sway*0.9)*0.003*k-CURVE.rate*0.004;}
     camera.rotation.set(pitch+sp,yaw,sr,'YXZ');}
   if(S.moving){const dz=sceneSpeed()/3.6*dt;movers.forEach(mv=>{if(mv.group.visible)updMover(mv,dz);});}
@@ -1102,7 +1181,9 @@ renderer.setAnimationLoop(()=>{
   hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();updPoi(routeState(nowMin()));checkGuess(routeState(nowMin()));if((GAME.boardT=(GAME.boardT||0)+1)%20===0)renderGame();
     if(ARR.cur&&!ARR.done[ARR.cur.name]){ARR.done[ARR.cur.name]=1;pulseAll(0.6,250);}
     if(WAKE.v>0&&WAKE.mins>0&&!WAKE.buzzed){WAKE.buzzed=true;if(S.mode==='night')pulseAll(0.4,400);}}
-  renderer.render(scene,camera);
+  if(PHONE.on)phoneDwell(dt);
+  hud.scale.setScalar(PHONE.on&&camera.aspect<1?Math.max(0.5,camera.aspect*1.15):1);
+  if(PHONE.mode==='cardboard')renderStereo();else renderer.render(scene,camera);
 });
 
 /* ---------- live panel ---------- */
@@ -1220,7 +1301,7 @@ $('#tests').addEventListener('click',e=>{
 });
 $('#tests').addEventListener('input',e=>{const card=e.target.closest('.test');const f=e.target.dataset.f;if(!card||!f)return;tstate(card.dataset.id)[f]=e.target.value;save();});
 const SCENE_NAME={day:'Day',cinema:'Cinema',night:'Night',pano:'360/Window'};
-function snap(){const f=liveFresh();return {time:clockNow(),iso:new Date().toISOString(),where:whereText(),speed:Math.round(sceneSpeed()),src:S.liveSpeed&&f?'live':'sim',lat:f&&LIVE.lat?+LIVE.lat.toFixed(5):'',lon:f&&LIVE.lon?+LIVE.lon.toFixed(5):'',scene:SCENE_NAME[S.mode],vr:renderer.xr.isPresenting?'yes':DESK.on?'desktop':'no',turn:Math.round(CURVE.rate*10)/10,curves:CURVE.on?'synced':'off'};}
+function snap(){const f=liveFresh();return {time:clockNow(),iso:new Date().toISOString(),where:whereText(),speed:Math.round(sceneSpeed()),src:S.liveSpeed&&f?'live':'sim',lat:f&&LIVE.lat?+LIVE.lat.toFixed(5):'',lon:f&&LIVE.lon?+LIVE.lon.toFixed(5):'',scene:SCENE_NAME[S.mode],vr:renderer.xr.isPresenting?'yes':PHONE.on?PHONE.mode:DESK.on?'desktop':'no',turn:Math.round(CURVE.rate*10)/10,curves:CURVE.on?'synced':'off'};}
 function renderNotes(){$('#noteList').innerHTML=S.notes.map((n,i)=>'<li><span class="when">'+n.time+(n.where?'<br>'+esc(n.where):'')+(n.speed!==undefined?'<br>'+n.speed+' km/h · '+esc(n.scene||''):'')+'</span><span>'+(n.marker?'<span class="mk">VR marker</span><input type="text" id="mk-'+i+'" data-mk="'+i+'" value="'+esc(n.text)+'" placeholder="What did you feel here?" aria-label="Marker comment">':esc(n.text))+'</span></li>').join('')||'<li><span class="when">–</span><span class="note">No notes yet.</span></li>';}
 function addNote(){const v=$('#noteTxt').value.trim();if(!v)return;S.notes.unshift(Object.assign(snap(),{text:v}));$('#noteTxt').value='';save();renderNotes();}
 function addMarker(){S.notes.unshift(Object.assign(snap(),{text:'',marker:true}));markFlash=2.5;save();renderNotes();drawHUD();}
