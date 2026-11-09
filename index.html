@@ -114,6 +114,20 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 .notes li{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
 .notes .when{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
 #csv{font-family:var(--mono);font-size:12px;min-height:120px}
+.vlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.vlist:empty{display:none}
+.vlist button{width:100%;display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:12px;text-align:left;font:inherit;background:var(--deep);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;min-height:56px}
+.vlist button:hover{border-color:#41539a}
+.vlist .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);font-size:14px;font-weight:700}
+.vlist .tt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.vlist .tt b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vlist .tt span{font-size:12px;color:var(--muted)}
+.vlist .bar{height:3px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:4px}
+.vlist .bar i{display:block;height:100%;background:var(--accent);width:0}
+.vlist .st{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.vlist button[aria-current="true"]{border-color:var(--accent);background:var(--panel2)}
+.vlist button[aria-current="true"] .ic{background:var(--accent);color:#fff}
+.vresume{font:inherit;font-weight:700;text-align:left;background:var(--pill);color:var(--ink);border:none;border-radius:12px;padding:12px 14px;cursor:pointer}
 .clips{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .clips:empty{display:none}
 .clips button{width:100%;text-align:left;font:inherit;font-size:13px;background:var(--deep);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px}
@@ -249,35 +263,42 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
       <div id="gameRewards" style="display:flex;flex-direction:column;gap:10px"></div>
       <div class="row"><button class="btn small danger" id="gameReset">Reset game</button></div>
     </div>
-    <div class="panel">
-      <div class="row" style="justify-content:space-between"><h2>360° &amp; window views</h2><span class="tag" id="clipCount">0 clips</span></div>
-      <div class="file">
-        <label for="panoFile">Add 360° photos/videos, phone panoramas or window recordings (several at once)</label>
-        <input type="file" id="panoFile" accept="image/*,video/*" multiple>
-      </div>
-      <div id="hostedBox" hidden><span class="note">Ready-made clips on this site</span><ul class="clips" id="hostedList" style="margin-top:6px"></ul><span class="note" id="hostedStatus"></span></div>
-      <ul class="clips" id="clipList"></ul>
-      <div class="meta">
-        <select id="fmtSel" aria-label="Projection">
-          <option value="auto">Projection: auto</option>
-          <option value="360">360° sphere</option>
-          <option value="180">180° (VR180)</option>
-          <option value="pano">Phone panorama</option>
-          <option value="window">Window view (flat video)</option>
-        </select>
-        <select id="stereoSel" aria-label="Stereo layout">
-          <option value="auto">Stereo: auto</option>
-          <option value="mono">Mono</option>
-          <option value="tb">3D top-bottom</option>
-          <option value="sbs">3D side-by-side</option>
-        </select>
-      </div>
+    <div class="panel" id="vidPanel">
+      <div class="row" style="justify-content:space-between"><h2>360° videos</h2><span class="tag" id="clipCount">Pick one to start</span></div>
+      <button class="vresume" id="vidResume" hidden></button>
+      <ol class="vlist" id="vidList"></ol>
+      <p class="note" id="vidStatus"></p>
       <div class="row">
-        <label for="yawRange">Rotate view</label>
-        <input type="range" id="yawRange" min="-180" max="180" step="5" value="0">
-        <span id="yawVal" style="font-variant-numeric:tabular-nums;min-width:44px">0°</span>
+        <label class="btn small" for="panoFile" style="display:inline-flex;align-items:center">+ Add your own file</label>
+        <input type="file" id="panoFile" accept="image/*,video/*" multiple style="position:absolute;width:1px;height:1px;opacity:0">
+        <button class="btn small" id="playBtn2">Play / pause</button>
       </div>
-      <p class="note">Auto picks the projection from the shape: 2:1 is a full sphere, 1:1 is 3D top-bottom, very wide is a phone panorama, 16:9 becomes a curved window. In VR: <b>A/X</b> next clip, <b>B/Y</b> play/pause, <b>thumbstick</b> rotates.</p>
+      <details>
+        <summary class="note" style="cursor:pointer">Adjust the view</summary>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+          <div class="row">
+            <label for="yawRange">Turn the video</label>
+            <input type="range" id="yawRange" min="-180" max="180" step="5" value="0">
+            <span id="yawVal" style="font-variant-numeric:tabular-nums;min-width:44px">0°</span>
+          </div>
+          <div class="meta">
+            <select id="fmtSel" aria-label="Projection">
+              <option value="auto">Shape: automatic</option>
+              <option value="360">360° sphere</option>
+              <option value="180">180° (VR180)</option>
+              <option value="pano">Phone panorama</option>
+              <option value="window">Window view (flat video)</option>
+            </select>
+            <select id="stereoSel" aria-label="Stereo layout">
+              <option value="auto">3D: automatic</option>
+              <option value="mono">Flat</option>
+              <option value="tb">3D top-bottom</option>
+              <option value="sbs">3D side-by-side</option>
+            </select>
+          </div>
+          <p class="note">Your own files can be 360° photos or videos, phone panoramas or window recordings. They stay on this device. In VR: <b>A/X</b> next part, <b>B/Y</b> play/pause, <b>thumbstick</b> turns the video.</p>
+        </div>
+      </details>
     </div>
     <div class="panel">
       <h2>YouTube window views</h2>
@@ -354,7 +375,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v27 · 9 Nov 15:20';
+const BUILD='v28 · 9 Nov 16:20';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  vs:{tv:{train:'',from:'Västerås',to:'Stockholm'},tag:'Estimated times · add the train number for live data',text:`07:05 Västerås C\n07:21 Enköping\n07:33 Bålsta\n07:52 Sundbyberg\n08:00 Stockholm C`},
@@ -405,7 +426,7 @@ let S={mode:'day',moving:true,speed:200,hud:true,preset:'sj',routes:{vs:PRESETS.
 try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){S=Object.assign(S,d,{sim:false});S.routes=Object.assign({vs:PRESETS.vs.text,sv:PRESETS.sv.text,sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},d.routes||{});}}catch(e){}
 try{if(!localStorage.getItem('rv-return-184')){localStorage.setItem('rv-return-184','1');S.preset='sj184';S.tv=Object.assign({},S.tv,PRESETS.sj184.tv);}}catch(e){}
 if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
-function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt,game:S.game,voice:S.voice,carriage:S.carriage,passengers:S.passengers}));}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt,game:S.game,voice:S.voice,carriage:S.carriage,passengers:S.passengers,lastClip:S.lastClip}));}catch(e){}}
 
 /* ---------- live onboard data (train Wi-Fi portal) ---------- */
 const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:'',diag:{fetch:'–',script:'–',bridge:''}};
@@ -741,21 +762,37 @@ function showClip(i){
     $('#fmtSel').value=c.fmt;$('#stereoSel').value=c.stereo;}
   renderClips();drawHUD();
 }
-function nextClip(){if(clips.length){showClip((clipIdx+1)%clips.length);if(S.mode!=='pano')setMode('pano');}}
+function nextClip(){const cc=clips[clipIdx];if(cc&&HOSTED.some(h=>h.file===cc.src)&&playNextHosted(cc.src))return;if(clips.length){showClip((clipIdx+1)%clips.length);if(S.mode!=='pano')setMode('pano');}}
 const FMT_NAME={'360':'360°','180':'180°','pano':'Panorama','window':'Window'};
+let HOSTED=[];
+function fmtT(t){t=Math.max(0,Math.floor(t||0));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
+function vidEntries(){const out=HOSTED.map((h,i)=>({key:'h'+i,name:h.name||h.file,note:h.note||'',src:h.file,hosted:i}));
+  clips.forEach((c,k)=>{if(!HOSTED.some(h=>h.file===c.src))out.push({key:'c'+k,name:c.name,note:'Your file',src:c.src});});
+  out.forEach(e=>{e.idx=clips.findIndex(c=>c.src===e.src);});return out;}
 function renderClips(){
-  $('#clipCount').textContent=clips.length+(clips.length===1?' clip':' clips');
-  $('#clipList').innerHTML=clips.map((c,k)=>'<li><button data-clip="'+k+'" aria-pressed="'+(k===clipIdx)+'"><span>'+esc(c.name)+'</span><span class="k">'+(c.res?FMT_NAME[c.res.fmt]+(c.res.st!=='mono'?' · 3D':''):'')+(c.video?' · video':'')+'</span></button></li>').join('');
+  const cur=clips[clipIdx],ents=vidEntries();
+  $('#clipCount').textContent=cur?'Now: '+(HOSTED.find(h=>h.file===cur.src)?.name||cur.name).replace('Rail ride 360 · ',''):(ents.length?'Pick one to start':'No videos yet');
+  $('#vidList').innerHTML=ents.map((e,n)=>{const on=e.idx>=0&&e.idx===clipIdx;return '<li><button data-v="'+n+'" aria-current="'+on+'"><span class="ic">'+(on?'▶':(n+1))+'</span><span class="tt"><b>'+esc(e.name)+'</b><span>'+esc(e.note)+'</span>'+(on?'<span class="bar"><i id="vidBar"></i></span>':'')+'</span><span class="st" '+(on?'id="vidTime"':'')+'>'+(on?'':(e.idx>=0?'Ready':''))+'</span></button></li>';}).join('');
+  updVidRow();
 }
+function updVidRow(){const c=clips[clipIdx],v=c&&c.video,t=$('#vidTime'),b=$('#vidBar');if(!v||!t)return;
+  t.textContent=(v.paused?'Paused · ':'')+fmtT(v.currentTime)+' / '+fmtT(v.duration);if(b&&v.duration)b.style.width=(100*v.currentTime/v.duration)+'%';
+  if(c.src&&HOSTED.some(h=>h.file===c.src)&&v.currentTime>3&&!v.paused){S.lastClip={file:c.src,t:Math.floor(v.currentTime)};if(S.lastClip.t%5===0)save();}}
+function playEntry(n){const e=vidEntries()[n];if(!e)return;if(e.idx>=0){showClip(e.idx);setMode('pano');return;}
+  const h=HOSTED[e.hosted];$('#vidStatus').textContent='Loading '+e.name+'…';addClipSrc(h.file,h.name||h.file,!/\.(jpe?g|png|webp)$/i.test(h.file),h.fmt?{fmt:h.fmt}:null);if(typeof h.yaw==='number')setTimeout(()=>setYaw(h.yaw),300);}
+function playNextHosted(src){const i=HOSTED.findIndex(h=>h.file===src);if(i<0||i+1>=HOSTED.length)return false;
+  const ents=vidEntries(),n=ents.findIndex(e=>e.hosted===i+1);if(n>=0){playEntry(n);return true;}return false;}
 function addClipFile(f){addClipSrc(URL.createObjectURL(f),f.name,f.type.startsWith('video'));}
 // a clip from a file the user picked, or one hosted next to the page (clips.json)
 function addClipSrc(url,name,isVideo,opts){
   const ex=clips.findIndex(c=>c.src===url);if(ex>=0){showClip(ex);setMode('pano');return;}
   const c=Object.assign({name,src:url,fmt:'auto',stereo:'auto',w:2,h:1},opts||{});
-  const done=()=>{clips.push(c);if(clips.length===1||clipIdx<0)showClip(clips.length-1);else renderClips();setMode('pano');};
-  if(isVideo){const v=document.createElement('video');v.crossOrigin='anonymous';v.src=url;v.loop=true;v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.preload='auto';
+  const done=()=>{clips.push(c);showClip(clips.length-1);setMode('pano');$('#vidStatus').textContent='';if(opts&&opts.startAt)try{c.video.currentTime=opts.startAt;}catch(e){}};
+  const isHosted=HOSTED.some(h=>h.file===url);
+  if(isVideo){const v=document.createElement('video');v.crossOrigin='anonymous';v.src=url;v.loop=!isHosted;v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.preload='auto';
     v.addEventListener('loadedmetadata',()=>{c.w=v.videoWidth;c.h=v.videoHeight;c.video=v;c.tex=new THREE.VideoTexture(v);done();},{once:true});
-    v.addEventListener('error',()=>{const st=$('#hostedStatus');if(st)st.textContent='Could not load '+name+'.';},{once:true});}
+    v.addEventListener('error',()=>{$('#vidStatus').textContent='Could not load '+name+'. Check the connection and try again.';},{once:true});
+    if(isHosted)v.addEventListener('ended',()=>{if(!playNextHosted(url)){v.currentTime=0;v.play().catch(()=>{});}});}
   else{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{c.w=img.naturalWidth;c.h=img.naturalHeight;const t=new THREE.Texture(img);t.needsUpdate=true;c.tex=t;done();};img.src=url;}
 }
 
@@ -1588,7 +1625,7 @@ renderer.setAnimationLoop(()=>{
     tileMeshes.forEach(m=>{const tgt=(m===hov?1.12:1)*(m.userData.film===selFilm?1.06:1);m.scale.setScalar(m.scale.x+(tgt-m.scale.x)*0.3);});}
   if(markFlash>0)markFlash-=dt;
   updAudio();
-  hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();updPoi(routeState(nowMin()));checkGuess(routeState(nowMin()));if((GAME.boardT=(GAME.boardT||0)+1)%20===0)renderGame();
+  hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();updPoi(routeState(nowMin()));checkGuess(routeState(nowMin()));updVidRow();if((GAME.boardT=(GAME.boardT||0)+1)%20===0)renderGame();
     if(ARR.cur&&!ARR.done[ARR.cur.name]){ARR.done[ARR.cur.name]=1;pulseAll(0.6,250);const li=liveInfo[ARR.cur.name]||{};say('Next stop: '+ARR.cur.name.replace(/ C$/,' Central')+(li.track?', track '+li.track:'')+'.',true);}
     if(WAKE.v>0&&WAKE.mins>0&&!WAKE.buzzed){WAKE.buzzed=true;if(S.mode==='night')pulseAll(0.4,400);}}
   if(PHONE.on)phoneDwell(dt);
@@ -1666,7 +1703,8 @@ function updRouteNow(){
 let activeVideo=null;
 function makeVideo(file){const v=document.createElement('video');v.src=URL.createObjectURL(file);v.loop=true;v.playsInline=true;v.play().catch(()=>{});return v;}
 $('#panoFile').onchange=e=>{Array.from(e.target.files||[]).forEach(addClipFile);e.target.value='';};
-$('#clipList').addEventListener('click',e=>{const b=e.target.closest('[data-clip]');if(!b)return;showClip(+b.dataset.clip);setMode('pano');});
+$('#vidList').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;playEntry(+b.dataset.v);});
+$('#playBtn2').onclick=togglePlay;
 $('#fmtSel').onchange=e=>{const c=clips[clipIdx];if(c){c.fmt=e.target.value;showClip(clipIdx);}};
 $('#stereoSel').onchange=e=>{const c=clips[clipIdx];if(c){c.stereo=e.target.value;showClip(clipIdx);}};
 function setYaw(d){clipYaw=((d+540)%360)-180;clipHolder.rotation.y=THREE.MathUtils.degToRad(clipYaw);$('#yawRange').value=Math.round(clipYaw/5)*5;$('#yawVal').textContent=Math.round(clipYaw)+'°';}
@@ -1760,10 +1798,10 @@ $('#clearBtn').onclick=()=>{const b=$('#clearBtn');if(!clearArm){clearArm=true;b
 /* init */
 $('#buildTag').textContent=BUILD;
 // clips hosted with the page: list them in clips.json as [{"file":"videos/x.mp4","name":"…","yaw":0}]
-fetch('clips.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(list=>{if(!Array.isArray(list)||!list.length)return;
-  $('#hostedBox').hidden=false;$('#hostedList').innerHTML=list.map((c,i)=>'<li><button data-hosted="'+i+'"><span>'+esc(c.name||c.file)+'</span><span class="k">'+esc(c.note||'Load ↓')+'</span></button></li>').join('');
-  $('#hostedList').addEventListener('click',e=>{const b=e.target.closest('[data-hosted]');if(!b)return;const c=list[+b.dataset.hosted];$('#hostedStatus').textContent='Loading '+(c.name||c.file)+'…';
-    addClipSrc(c.file,c.name||c.file,!/\.(jpe?g|png|webp)$/i.test(c.file),c.fmt?{fmt:c.fmt}:null);if(typeof c.yaw==='number')setTimeout(()=>setYaw(c.yaw),300);setTimeout(()=>{$('#hostedStatus').textContent='';},4000);});
+fetch('clips.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(list=>{if(!Array.isArray(list)||!list.length)return;HOSTED=list;renderClips();
+  const lc=S.lastClip,h=lc&&HOSTED.find(x=>x.file===lc.file);
+  if(h&&lc.t>5){const b=$('#vidResume');b.hidden=false;b.textContent='▶ Continue '+(h.name||h.file).replace('Rail ride 360 · ','')+' at '+fmtT(lc.t);
+    b.onclick=()=>{b.hidden=true;addClipSrc(h.file,h.name||h.file,true,Object.assign({startAt:lc.t},h.fmt?{fmt:h.fmt}:{}));};}
 }).catch(()=>{});
 $('#snowBtn').onclick=()=>setSnow(!WORLD.snow);
 $('#carBtn').onclick=()=>setCarriage(!CAR.on);$('#paxBtn').onclick=()=>setPassengers(!PAX.on);$('#voiceBtn').onclick=()=>setVoice(!VOICE.on);$('#shotBtn').onclick=requestPostcard;
