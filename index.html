@@ -209,6 +209,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
     <div class="panel">
       <div class="row" style="justify-content:space-between"><h2>Journey</h2><span class="tag" id="routeTag">Illustrative</span></div>
       <select id="preset" aria-label="Journey preset">
+        <option value="flam">Flåm Line · Myrdal → Flåm (360 film)</option>
         <option value="vs">Västerås → Stockholm (add train no.)</option>
         <option value="sv">Stockholm → Västerås (add train no.)</option>
         <option value="sj184">SJ 184 · Skövde → Västerås (live)</option>
@@ -381,9 +382,20 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v30 · 9 Nov 16:45';
+const BUILD='v31 · 9 Nov 17:05';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
+ flam:{tag:'Synced to the Flåm Line 360 film',video:'flam',text:`10:00 Myrdal
+10:02 Vatnahalsen
+10:05 Reinunga
+10:09 Kjosfossen
+10:14 Kårdal
+10:18 Blomheller
+10:22 Berekvam
+10:30 Dalsbotn
+10:37 Håreina
+10:40 Lunden
+10:43 Flåm`},
  vs:{tv:{train:'',from:'Västerås',to:'Stockholm'},tag:'Estimated times · add the train number for live data',text:`07:05 Västerås C\n07:21 Enköping\n07:33 Bålsta\n07:52 Sundbyberg\n08:00 Stockholm C`},
  sv:{tv:{train:'',from:'Stockholm',to:'Västerås'},tag:'Estimated times · add the train number for live data',text:`16:10 Stockholm C\n16:17 Sundbyberg\n16:36 Bålsta\n16:48 Enköping\n17:05 Västerås C`},
  sj:{tv:{train:'159',from:'Västerås',to:'Skövde'},tag:'Estimated times · live data replaces them',text:`06:12 Västerås C
@@ -428,8 +440,8 @@ const TESTS=[
 ];
 
 /* ---------- state ---------- */
-let S={mode:'day',moving:true,speed:200,hud:true,preset:'sj',routes:{vs:PRESETS.vs.text,sv:PRESETS.sv.text,sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},liveSpeed:true,tv:{train:'159',from:'Västerås',to:'Skövde',key:''},yt:['https://www.youtube.com/watch?v=I_00MTHuXXE'],sim:false,simReal:0,tests:{},notes:[],game:{on:true,name:'',journey:'',score:0,caught:0,stamps:{},guess:null,guessResult:null,rewards:[]}};
-try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){S=Object.assign(S,d,{sim:false});S.routes=Object.assign({vs:PRESETS.vs.text,sv:PRESETS.sv.text,sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},d.routes||{});}}catch(e){}
+let S={mode:'day',moving:true,speed:200,hud:true,preset:'sj',routes:{flam:PRESETS.flam.text,vs:PRESETS.vs.text,sv:PRESETS.sv.text,sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},liveSpeed:true,tv:{train:'159',from:'Västerås',to:'Skövde',key:''},yt:['https://www.youtube.com/watch?v=I_00MTHuXXE'],sim:false,simReal:0,tests:{},notes:[],game:{on:true,name:'',journey:'',score:0,caught:0,stamps:{},guess:null,guessResult:null,rewards:[]}};
+try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){S=Object.assign(S,d,{sim:false});S.routes=Object.assign({flam:PRESETS.flam.text,vs:PRESETS.vs.text,sv:PRESETS.sv.text,sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},d.routes||{});}}catch(e){}
 try{if(!localStorage.getItem('rv-return-184')){localStorage.setItem('rv-return-184','1');S.preset='sj184';S.tv=Object.assign({},S.tv,PRESETS.sj184.tv);}}catch(e){}
 if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
 function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt,game:S.game,voice:S.voice,carriage:S.carriage,passengers:S.passengers,lastClip:S.lastClip}));}catch(e){}}
@@ -476,7 +488,8 @@ function updHeading(d){
   if(CURVE.lastH!==null){const dts=(now-CURVE.lastAt)/1000,dh=wrap180(h-CURVE.lastH);if(dts>0.5&&dts<20&&LIVE.speed>3&&Math.abs(dh)<45)CURVE.target=Math.max(-6,Math.min(6,dh/dts));}
   CURVE.lastH=h;CURVE.lastAt=now;
 }
-function sceneSpeed(){return S.liveSpeed&&liveFresh()?LIVE.speed*3.6:S.speed;}
+function filmSpeed(){if(vidSyncSec()===null)return null;const c=clips[clipIdx];return c.video.paused?0:28;}
+function sceneSpeed(){const fs=filmSpeed();if(fs!==null)return fs;return S.liveSpeed&&liveFresh()?LIVE.speed*3.6:S.speed;}
 
 /* ---------- Trafikverket (timetable, delays, tracks) ---------- */
 async function tvQuery(xml){
@@ -534,7 +547,7 @@ setInterval(pollTrainPosition,10000);setTimeout(pollTrainPosition,1500);
 /* ---------- route ---------- */
 let stations=[],events=[];
 // approximate station coordinates; Trafikverket data overrides these when loaded
-const COORDS={'enköping':[59.6357,17.0745],'bålsta':[59.5677,17.5321],'kungsängen':[59.4787,17.7518],'sundbyberg':[59.3609,17.9714],'stockholm':[59.3302,18.0582],'västerås':[59.6087,16.5513],'köping':[59.5131,15.9939],'arboga':[59.3940,15.8395],'örebro':[59.2797,15.2116],'hallsberg':[59.0663,15.1097],'laxå':[58.9862,14.6196],'hova':[58.8604,14.2153],'töreboda':[58.7069,14.1226],'skövde':[58.3906,13.8456]};
+const COORDS={'myrdal':[60.7353,7.1226],'vatnahalsen':[60.7438,7.1298],'reinunga':[60.7439,7.1392],'kjosfossen':[60.7470,7.1357],'kårdal':[60.7600,7.1230],'blomheller':[60.7740,7.1100],'berekvam':[60.7883,7.0958],'dalsbotn':[60.8140,7.1090],'håreina':[60.8397,7.1227],'lunden':[60.8510,7.1190],'flåm':[60.8633,7.1145],'enköping':[59.6357,17.0745],'bålsta':[59.5677,17.5321],'kungsängen':[59.4787,17.7518],'sundbyberg':[59.3609,17.9714],'stockholm':[59.3302,18.0582],'västerås':[59.6087,16.5513],'köping':[59.5131,15.9939],'arboga':[59.3940,15.8395],'örebro':[59.2797,15.2116],'hallsberg':[59.0663,15.1097],'laxå':[58.9862,14.6196],'hova':[58.8604,14.2153],'töreboda':[58.7069,14.1226],'skövde':[58.3906,13.8456]};
 const liveInfo={};// name -> {delay, track, lat, lon}
 function coordOf(name){const li=liveInfo[name];if(li&&li.lat)return [li.lat,li.lon];const k=name.toLowerCase().replace(/\s+(c|central|centralstation)$/,'').trim();return COORDS[k]||null;}
 function parseRoute(txt){
@@ -552,7 +565,11 @@ function gpsProgress(lat,lon){
     const d=Math.hypot(ax+u*dx-px,ay+u*dy-py);if(!best||d<best.d)best={i,u,d,segKm:Math.sqrt(L2)*111.2};}
   return best&&best.d*111.2<25?best:null;
 }
+// when the Flåm film plays, journey time follows the film instead of the clock
+function vidSyncSec(){try{if(S.mode!=='pano')return null;const c=clips[clipIdx];if(!c||!c.video)return null;const h=HOSTED.find(x=>x.file===c.src);
+  if(!h||!h.route||h.route!==S.preset)return null;return (h.start||0)+c.video.currentTime;}catch(e){return null;}}
 function nowMin(){
+  {const vs=vidSyncSec();if(vs!==null&&stations.length)return stations[0].t+vs/60;}
   if(S.sim&&stations.length) return stations[0].t-3+(Date.now()-S.simReal)/1000;
   const d=new Date(); let n=d.getHours()*60+d.getMinutes()+d.getSeconds()/60;
   if(stations.length&&stations[stations.length-1].t>=1440&&n<stations[0].t-360) n+=1440;
@@ -561,7 +578,7 @@ function nowMin(){
 function hhmm(m){m=((Math.floor(m)%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
 function routeState(n){
   if(stations.length<2) return null;
-  if(!S.sim&&liveFresh()&&LIVE.lat){const g=gpsProgress(LIVE.lat,LIVE.lon);
+  if(!S.sim&&vidSyncSec()===null&&liveFresh()&&LIVE.lat){const g=gpsProgress(LIVE.lat,LIVE.lon);
     if(g){const a=stations[g.i],b=stations[g.i+1],first=stations[0].t,last=stations[stations.length-1].t;
       let mins=b.t+(liveInfo[b.name]&&liveInfo[b.name].delay||0)-n;
       if(LIVE.speed>8){const est=(1-g.u)*g.segKm/(LIVE.speed*3.6)*60;mins=est;}
@@ -762,7 +779,8 @@ function showClip(i){
   clipIdx=i;const c=clips[i];panoPhMesh.visible=!c;
   // the YouTube sign only shows when no video is playing, so it never sits on top of a ride
   ytSign.visible=!c;ytSign.position.y=c?-500:-0.45;panoSurround.visible=false;
-  if(c){const r=resolveClip(c);c.res=r;panoSurround.visible=r.fmt!=='360';
+  if(c){const hh=HOSTED.find(x=>x.file===c.src);if(hh&&hh.route&&PRESETS[hh.route]&&S.preset!==hh.route){S.prevPreset=S.preset;S.preset=hh.route;S.sim=false;save();loadPreset();}
+    const r=resolveClip(c);c.res=r;panoSurround.visible=r.fmt!=='360';
     const eyes=r.st==='mono'?[0]:[0,1];
     eyes.forEach(eye=>{const m=new THREE.Mesh(remapUV(buildGeo(r.fmt,r.ea),eye,r.st),new THREE.MeshBasicMaterial({map:c.tex,side:THREE.DoubleSide}));
       if(r.st!=='mono')m.layers.set(eye+1);clipHolder.add(m);});
@@ -779,7 +797,7 @@ function vidEntries(){const out=HOSTED.map((h,i)=>({key:'h'+i,name:h.name||h.fil
   out.forEach(e=>{e.idx=clips.findIndex(c=>c.src===e.src);});return out;}
 function renderClips(){
   const cur=clips[clipIdx],ents=vidEntries();
-  $('#clipCount').textContent=cur?'Now: '+(HOSTED.find(h=>h.file===cur.src)?.name||cur.name).replace('Rail ride 360 · ',''):(ents.length?'Pick one to start':'No videos yet');
+  $('#clipCount').textContent=cur?'Now: '+(HOSTED.find(h=>h.file===cur.src)?.name||cur.name).replace(/^(Rail ride 360|Flåm Line 360) · /,''):(ents.length?'Pick one to start':'No videos yet');
   $('#vidList').innerHTML=ents.map((e,n)=>{const on=e.idx>=0&&e.idx===clipIdx;return '<li><button data-v="'+n+'" aria-current="'+on+'"><span class="ic">'+(on?'▶':(n+1))+'</span><span class="tt"><b>'+esc(e.name)+'</b><span>'+esc(e.note)+'</span>'+(on?'<span class="bar"><i id="vidBar"></i></span>':'')+'</span><span class="st" '+(on?'id="vidTime"':'')+'>'+(on?'':(e.idx>=0?'Ready':''))+'</span></button></li>';}).join('');
   updVidRow();
 }
@@ -818,7 +836,7 @@ const poiTex=new THREE.CanvasTexture(poiC);poiTex.anisotropy=renderer.capabiliti
 const poiMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.15,0.247),new THREE.MeshBasicMaterial({map:poiTex,transparent:true,depthTest:false}));
 poiMesh.renderOrder=12;poiMesh.position.set(0,0.39,0.02);poiMesh.visible=false;hud.add(poiMesh);
 function estPos(st){
-  if(liveFresh()&&LIVE.lat)return {pos:[LIVE.lat,LIVE.lon],live:true};
+  if(vidSyncSec()===null&&liveFresh()&&LIVE.lat)return {pos:[LIVE.lat,LIVE.lon],live:true};
   if(!st)return null;
   if(st.phase==='run'){const a=coordOf(st.prev.name),b=coordOf(st.next.name);if(!a||!b)return null;const u=Math.max(0,Math.min(1,(nowMin()-st.prev.t)/((st.next.t-st.prev.t)||1)));return {pos:[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],live:false,a,b};}
   const c=coordOf((st.phase==='done'?stations[stations.length-1]:stations[0]).name);return c?{pos:c,live:false}:null;
@@ -835,7 +853,8 @@ function drawMap(st){
   c.font='bold 16px '+F;c.textAlign='right';c.fillStyle=live?'#ff5a26':'#a9b4d6';c.fillText(live?'LIVE GPS':'ESTIMATED',W-36,56);
   c.lineCap='round';c.lineJoin='round';c.strokeStyle='#41539a';c.lineWidth=6;c.beginPath();pts.forEach((p,i)=>{const q=P(p);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]);});c.stroke();
   const n=nowMin();
-  pts.forEach((p,i)=>{const q=P(p),passed=stations[i].t<=n;c.beginPath();c.arc(q[0],q[1],7,0,7);c.fillStyle=passed?'#fff':'#6f80c4';c.fill();
+  const lab=[];pts.forEach((p,i)=>{const q=P(p),passed=stations[i].t<=n;c.beginPath();c.arc(q[0],q[1],7,0,7);c.fillStyle=passed?'#fff':'#6f80c4';c.fill();
+    const end=i===0||i===pts.length-1;if(!end&&lab.some(l=>Math.abs(l[1]-q[1])<20&&Math.abs(l[0]-q[0])<120))return;lab.push(q);
     c.font='17px '+F;c.fillStyle='#d5dcf0';const right=q[0]<W/2;c.textAlign=right?'left':'right';c.fillText(stations[i].name,q[0]+(right?14:-14),q[1]+6);});
   if(pos){const q=P(pos);c.beginPath();c.arc(q[0],q[1],20,0,7);c.fillStyle='rgba(255,90,38,.25)';c.fill();c.beginPath();c.arc(q[0],q[1],10,0,7);c.fillStyle='#ff5a26';c.fill();}
   mapTex.needsUpdate=true;
@@ -868,9 +887,9 @@ function drawHUD(){
     c.fillText(sub+extra,44,204,W-200);
   } else {c.fillStyle='#fff';c.font='bold 44px '+F;c.fillText('No journey entered',44,170);}
   c.fillStyle='#fff';c.font='bold 30px '+F;c.textAlign='right';c.fillText(hhmm(n),W-44,204);
-  const live=S.liveSpeed&&liveFresh();
+  const film=vidSyncSec()!==null,live=!film&&S.liveSpeed&&liveFresh();
   c.fillStyle=live?'#ff5a26':'#a9b4d6';c.font='bold 30px '+F;c.fillText(Math.round(sceneSpeed())+' km/h',W-44,160);
-  c.font='bold 16px '+F;c.fillText(live?(LIVE.src==='Trafikverket'?'LIVE · TRAFIKVERKET':'LIVE · TRAIN GPS'):'SIMULATED',W-44,124);
+  c.font='bold 16px '+F;c.fillText(live?(LIVE.src==='Trafikverket'?'LIVE · TRAFIKVERKET':'LIVE · TRAIN GPS'):film?'FOLLOWS THE FILM':'SIMULATED',W-44,124);
   const arriving=st&&st.phase==='run'&&st.mins<=2?st.next:null;ARR.cur=arriving;
   if(markFlash>0){c.font='bold 26px '+F;rr(c,44,232,330,46,23);c.fillStyle='#ffffff';c.fill();c.fillStyle='#0a1540';c.textAlign='left';c.fillText('Marker saved · '+clockNow(),66,264);}
   else if(arriving){const li=liveInfo[arriving.name]||{};const txt='Arriving '+arriving.name+(li.track?' · track '+li.track:'')+' · '+minsText(st.mins);c.font='bold 26px '+F;const tw=Math.min(c.measureText(txt).width,W-140);
@@ -1051,8 +1070,17 @@ const POIS=[
  {id:'gotakanal',title:'Göta Canal',text:'The line crosses the canal at Töreboda · opened in 1832',trig:[58.706,14.122],r:2.2,look:[58.706,14.122]},
  {id:'malaren2',title:'Lake Mälaren',text:"Sweden's third-largest lake, with bays reaching up to the line",trig:[59.60,17.28],r:8,look:[59.50,17.25]},
  {id:'karlberg',title:'Karlberg Palace',text:'Home of the Swedish Military Academy, across Karlbergssjön',trig:[59.343,18.025],r:2,look:[59.3409,18.0333]},
+ {id:'myrdal',line:'flam',title:'Myrdal',text:'Mountain station at 867 m on the Bergen Line · the 20 km descent to the fjord starts here',trig:[60.7365,7.1240],r:0.5,look:[60.7353,7.1226]},
+ {id:'horseshoe',line:'flam',title:'Horseshoe curve',text:'The line turns back on itself on a shelf cut into the cliff',trig:[60.7405,7.1265],r:0.45,look:[60.7380,7.1300]},
+ {id:'kjosfossen',line:'flam',title:'Kjosfossen',text:'Waterfall right beside the line · summer trains stop so you can step out',trig:[60.7462,7.1370],r:0.45,look:[60.7475,7.1395]},
+ {id:'nali',line:'flam',title:'Nåli tunnel',text:'Longest of the 20 tunnels · 1.3 km, turning inside the mountain',trig:[60.7540,7.1300],r:0.5,look:[60.7560,7.1270]},
+ {id:'gradient',line:'flam',title:'One of the steepest',text:'Up to 5.5 % gradient · 866 m of descent in about 20 km',trig:[60.7700,7.1140],r:0.6,look:[60.7800,7.1000]},
+ {id:'berekvam',line:'flam',title:'Berekvam',text:'The only passing loop on the line · trains each way meet here',trig:[60.7870,7.0975],r:0.5,look:[60.7883,7.0958]},
+ {id:'rjoande',line:'flam',title:'Rjoandefossen',text:'A 140 m waterfall falling down the valley side',trig:[60.8280,7.1150],r:0.8,look:[60.8300,7.1300]},
+ {id:'flamfjord',line:'flam',title:'Flåm & the Aurlandsfjord',text:'End of the line at sea level · the fjord leads on to the UNESCO-listed Nærøyfjord',trig:[60.8610,7.1150],r:0.7,look:[60.8700,7.1200]},
  {id:'billingen',title:'Billingen',text:'The table mountain rising west of Skövde',trig:[58.43,13.90],r:6,look:[58.40,13.75]}
 ];
+function poiLine(){return S.preset==='flam'?'flam':'se';}
 const POI={on:true,cur:null,shownAt:0,seen:{}};
 function distKm(a,b){return Math.hypot((a[0]-b[0])*111.2,(a[1]-b[1])*111.2*Math.cos(a[0]*Math.PI/180));}
 function headingNow(ep){if(liveFresh()&&CURVE.lastH!==null)return CURVE.lastH;if(ep&&ep.a&&ep.b)return bearing(ep.a,ep.b);return null;}
@@ -1066,7 +1094,7 @@ function updPoi(st){
   if(!POI.on){poiMesh.visible=false;POI.cur=null;return;}
   const ep=estPos(st);if(!ep||(!ep.live&&(!st||st.phase!=='run'))){poiMesh.visible=false;POI.cur=null;return;}
   if(POI.cur){const p=POI.cur;if(Date.now()-POI.shownAt>45000||distKm(ep.pos,p.trig)>p.r*1.3){POI.cur=null;poiMesh.visible=false;}else{drawPoi(p,poiSide(ep,p));poiMesh.visible=true;}return;}
-  const p=POIS.find(x=>!POI.seen[x.id]&&distKm(ep.pos,x.trig)<=x.r);
+  const p=POIS.find(x=>!POI.seen[x.id]&&(x.line||'se')===poiLine()&&distKm(ep.pos,x.trig)<=x.r);
   if(p&&EVT_GPS[p.id]&&S.mode==='day')spawnBridge(EVT_GPS[p.id]);
   if(p&&S.game.on&&(S.mode==='day'||panoGame()))spawnToken(p);
   if(p){POI.seen[p.id]=1;POI.cur=p;POI.shownAt=Date.now();const side=poiSide(ep,p);say((side?side+'. ':'')+p.title+'. '+p.text.replace(/ · /g,'. ')+'.');drawPoi(p,side);poiMesh.visible=true;pulseAll(0.3,120);
@@ -1444,7 +1472,7 @@ function renderGame(){
   $('#gameFigs').innerHTML=FIGS.map(f=>'<div><span>'+esc(f.name)+(g.figs&&g.figs[f.id]?' ×'+g.figs[f.id]:'')+'</span><b>'+f.pts+'</b></div>').join('');$('#gameCaught').textContent=g.caught+(g.caught===1?' token caught':' tokens caught');
   $('#gameGuessInfo').textContent=g.guessResult?('Arrived '+hhmm(g.guessResult.actual)+' · you said '+hhmm(g.guess)+' · +'+g.guessResult.pts+' pts'):g.guess!=null?('Locked: '+hhmm(g.guess)):'No guess yet';
   const lastName=stations.length?stations[stations.length-1].name:'arrival';$('#gameGuessLabel').textContent='Guess the arrival time in '+lastName;
-  $('#gameStamps').innerHTML=POIS.map(p=>'<span class="tag'+(g.stamps[p.id]?' live':'')+'" style="'+(g.stamps[p.id]?'':'opacity:.55')+'">'+esc(p.title)+'</span>').join(' ');
+  $('#gameStamps').innerHTML=POIS.filter(p=>(p.line||'se')===poiLine()).map(p=>'<span class="tag'+(g.stamps[p.id]?' live':'')+'" style="'+(g.stamps[p.id]?'':'opacity:.55')+'">'+esc(p.title)+'</span>').join(' ');
   const me={name:g.name?g.name+' (you)':'You',score:g.score,me:true};const rows=demoBoard().concat([me]).sort((a,b)=>b.score-a.score);
   $('#gameBoard').innerHTML=rows.map((r,i)=>'<li style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line);'+(r.me?'color:var(--accent);font-weight:700':'')+'"><span>'+(i+1)+'. '+esc(r.name)+'</span><span style="font-variant-numeric:tabular-nums">'+r.score+'</span></li>').join('');
   const box=$('#gameRewards');box.innerHTML='';
@@ -1854,7 +1882,7 @@ $('#buildTag').textContent=BUILD;
 // clips hosted with the page: list them in clips.json as [{"file":"videos/x.mp4","name":"…","yaw":0}]
 fetch('clips.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(list=>{if(!Array.isArray(list)||!list.length)return;HOSTED=list;renderClips();
   const lc=S.lastClip,h=lc&&HOSTED.find(x=>x.file===lc.file);
-  if(h&&lc.t>5){const b=$('#vidResume');b.hidden=false;b.textContent='▶ Continue '+(h.name||h.file).replace('Rail ride 360 · ','')+' at '+fmtT(lc.t);
+  if(h&&lc.t>5){const b=$('#vidResume');b.hidden=false;b.textContent='▶ Continue '+(h.name||h.file).replace(/^(Rail ride 360|Flåm Line 360) · /,'')+' at '+fmtT(lc.t);
     b.onclick=()=>{b.hidden=true;addClipSrc(h.file,h.name||h.file,true,Object.assign({startAt:lc.t},h.fmt?{fmt:h.fmt}:{}));};}
 }).catch(()=>{});
 $('#snowBtn').onclick=()=>setSnow(!WORLD.snow);

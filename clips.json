@@ -1,10 +1,66 @@
 [
- {"file":"videos/rail360_part00.mp4","name":"Rail ride 360 · Part 1","note":"0:00–5:31","fmt":"360"},
- {"file":"videos/rail360_part01.mp4","name":"Rail ride 360 · Part 2","note":"5:31–11:02","fmt":"360"},
- {"file":"videos/rail360_part02.mp4","name":"Rail ride 360 · Part 3","note":"11:02–16:33","fmt":"360"},
- {"file":"videos/rail360_part03.mp4","name":"Rail ride 360 · Part 4","note":"16:33–22:04","fmt":"360"},
- {"file":"videos/rail360_part04.mp4","name":"Rail ride 360 · Part 5","note":"22:04–27:35","fmt":"360"},
- {"file":"videos/rail360_part05.mp4","name":"Rail ride 360 · Part 6","note":"27:35–33:06","fmt":"360"},
- {"file":"videos/rail360_part06.mp4","name":"Rail ride 360 · Part 7","note":"33:06–38:31","fmt":"360"},
- {"file":"videos/rail360_part07.mp4","name":"Rail ride 360 · Part 8","note":"38:31–43:05","fmt":"360"}
+{
+"file": "videos/rail360_part00.mp4",
+"name": "Flåm Line 360 · Part 1",
+"note": "Myrdal → Reinunga · 0:00–5:31",
+"fmt": "360",
+"start": 0,
+"route": "flam"
+},
+{
+"file": "videos/rail360_part01.mp4",
+"name": "Flåm Line 360 · Part 2",
+"note": "Reinunga · Kjosfossen · into the tunnels · 5:31–11:02",
+"fmt": "360",
+"start": 331,
+"route": "flam"
+},
+{
+"file": "videos/rail360_part02.mp4",
+"name": "Flåm Line 360 · Part 3",
+"note": "Nåli tunnel · inside the mountain · 11:02–16:33",
+"fmt": "360",
+"start": 662,
+"route": "flam"
+},
+{
+"file": "videos/rail360_part03.mp4",
+"name": "Flåm Line 360 · Part 4",
+"note": "Kårdal → Blomheller → Berekvam · 16:33–22:04",
+"fmt": "360",
+"start": 993,
+"route": "flam"
+},
+{
+"file": "videos/rail360_part04.mp4",
+"name": "Flåm Line 360 · Part 5",
+"note": "Berekvam · descending the valley · 22:04–27:35",
+"fmt": "360",
+"start": 1324,
+"route": "flam"
+},
+{
+"file": "videos/rail360_part05.mp4",
+"name": "Flåm Line 360 · Part 6",
+"note": "Dalsbotn · down the Flåm valley · 27:35–33:06",
+"fmt": "360",
+"start": 1655,
+"route": "flam"
+},
+{
+"file": "videos/rail360_part06.mp4",
+"name": "Flåm Line 360 · Part 7",
+"note": "Towards Håreina · 33:06–38:31",
+"fmt": "360",
+"start": 1986,
+"route": "flam"
+},
+{
+"file": "videos/rail360_part07.mp4",
+"name": "Flåm Line 360 · Part 8",
+"note": "Lunden → Flåm · 38:31–43:05",
+"fmt": "360",
+"start": 2311,
+"route": "flam"
+}
 ]
