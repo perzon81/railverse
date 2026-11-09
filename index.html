@@ -353,7 +353,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v24 · 9 Nov 14:50';
+const BUILD='v25 · 9 Nov 14:50';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  vs:{tv:{train:'',from:'Västerås',to:'Stockholm'},tag:'Estimated times · add the train number for live data',text:`07:05 Västerås C\n07:21 Enköping\n07:33 Bålsta\n07:52 Sundbyberg\n08:00 Stockholm C`},
@@ -749,7 +749,7 @@ function renderClips(){
 function addClipFile(f){
   const url=URL.createObjectURL(f),c={name:f.name,fmt:'auto',stereo:'auto',w:2,h:1};
   const done=()=>{clips.push(c);if(clips.length===1||clipIdx<0)showClip(clips.length-1);else renderClips();setMode('pano');};
-  if(f.type.startsWith('video')){const v=document.createElement('video');v.src=url;v.loop=true;v.playsInline=true;v.preload='auto';
+  if(f.type.startsWith('video')){const v=document.createElement('video');v.src=url;v.loop=true;v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.preload='auto';
     v.addEventListener('loadedmetadata',()=>{c.w=v.videoWidth;c.h=v.videoHeight;c.video=v;c.tex=new THREE.VideoTexture(v);done();},{once:true});}
   else{const img=new Image();img.onload=()=>{c.w=img.naturalWidth;c.h=img.naturalHeight;const t=new THREE.Texture(img);t.needsUpdate=true;c.tex=t;done();};img.src=url;}
 }
