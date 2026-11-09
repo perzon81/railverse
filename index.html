@@ -375,7 +375,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v28 · 9 Nov 16:20';
+const BUILD='v29 · 9 Nov 16:15';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  vs:{tv:{train:'',from:'Västerås',to:'Stockholm'},tag:'Estimated times · add the train number for live data',text:`07:05 Västerås C\n07:21 Enköping\n07:33 Bålsta\n07:52 Sundbyberg\n08:00 Stockholm C`},
@@ -753,7 +753,9 @@ function buildGeo(fmt,ea){
 function showClip(i){
   clips.forEach((c,k)=>{if(c.video&&k!==i)c.video.pause();});
   while(clipHolder.children.length){const m=clipHolder.children.pop();m.geometry.dispose();m.material.dispose();}
-  clipIdx=i;const c=clips[i];panoPhMesh.visible=!c;panoSurround.visible=false;
+  clipIdx=i;const c=clips[i];panoPhMesh.visible=!c;
+  // the YouTube sign only shows when no video is playing, so it never sits on top of a ride
+  ytSign.visible=!c;ytSign.position.y=c?-500:-0.45;panoSurround.visible=false;
   if(c){const r=resolveClip(c);c.res=r;panoSurround.visible=r.fmt!=='360';
     const eyes=r.st==='mono'?[0]:[0,1];
     eyes.forEach(eye=>{const m=new THREE.Mesh(remapUV(buildGeo(r.fmt,r.ea),eye,r.st),new THREE.MeshBasicMaterial({map:c.tex,side:THREE.DoubleSide}));
