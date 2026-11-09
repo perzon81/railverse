@@ -255,6 +255,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
         <label for="panoFile">Add 360° photos/videos, phone panoramas or window recordings (several at once)</label>
         <input type="file" id="panoFile" accept="image/*,video/*" multiple>
       </div>
+      <div id="hostedBox" hidden><span class="note">Ready-made clips on this site</span><ul class="clips" id="hostedList" style="margin-top:6px"></ul><span class="note" id="hostedStatus"></span></div>
       <ul class="clips" id="clipList"></ul>
       <div class="meta">
         <select id="fmtSel" aria-label="Projection">
@@ -353,7 +354,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v25 · 9 Nov 14:50';
+const BUILD='v26 · 9 Nov 15:05';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  vs:{tv:{train:'',from:'Västerås',to:'Stockholm'},tag:'Estimated times · add the train number for live data',text:`07:05 Västerås C\n07:21 Enköping\n07:33 Bålsta\n07:52 Sundbyberg\n08:00 Stockholm C`},
@@ -746,12 +747,16 @@ function renderClips(){
   $('#clipCount').textContent=clips.length+(clips.length===1?' clip':' clips');
   $('#clipList').innerHTML=clips.map((c,k)=>'<li><button data-clip="'+k+'" aria-pressed="'+(k===clipIdx)+'"><span>'+esc(c.name)+'</span><span class="k">'+(c.res?FMT_NAME[c.res.fmt]+(c.res.st!=='mono'?' · 3D':''):'')+(c.video?' · video':'')+'</span></button></li>').join('');
 }
-function addClipFile(f){
-  const url=URL.createObjectURL(f),c={name:f.name,fmt:'auto',stereo:'auto',w:2,h:1};
+function addClipFile(f){addClipSrc(URL.createObjectURL(f),f.name,f.type.startsWith('video'));}
+// a clip from a file the user picked, or one hosted next to the page (clips.json)
+function addClipSrc(url,name,isVideo,opts){
+  const ex=clips.findIndex(c=>c.src===url);if(ex>=0){showClip(ex);setMode('pano');return;}
+  const c=Object.assign({name,src:url,fmt:'auto',stereo:'auto',w:2,h:1},opts||{});
   const done=()=>{clips.push(c);if(clips.length===1||clipIdx<0)showClip(clips.length-1);else renderClips();setMode('pano');};
-  if(f.type.startsWith('video')){const v=document.createElement('video');v.src=url;v.loop=true;v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.preload='auto';
-    v.addEventListener('loadedmetadata',()=>{c.w=v.videoWidth;c.h=v.videoHeight;c.video=v;c.tex=new THREE.VideoTexture(v);done();},{once:true});}
-  else{const img=new Image();img.onload=()=>{c.w=img.naturalWidth;c.h=img.naturalHeight;const t=new THREE.Texture(img);t.needsUpdate=true;c.tex=t;done();};img.src=url;}
+  if(isVideo){const v=document.createElement('video');v.crossOrigin='anonymous';v.src=url;v.loop=true;v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.preload='auto';
+    v.addEventListener('loadedmetadata',()=>{c.w=v.videoWidth;c.h=v.videoHeight;c.video=v;c.tex=new THREE.VideoTexture(v);done();},{once:true});
+    v.addEventListener('error',()=>{const st=$('#hostedStatus');if(st)st.textContent='Could not load '+name+'.';},{once:true});}
+  else{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{c.w=img.naturalWidth;c.h=img.naturalHeight;const t=new THREE.Texture(img);t.needsUpdate=true;c.tex=t;done();};img.src=url;}
 }
 
 /* --- HUD --- */
@@ -1754,6 +1759,12 @@ $('#clearBtn').onclick=()=>{const b=$('#clearBtn');if(!clearArm){clearArm=true;b
 
 /* init */
 $('#buildTag').textContent=BUILD;
+// clips hosted with the page: list them in clips.json as [{"file":"videos/x.mp4","name":"…","yaw":0}]
+fetch('clips.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(list=>{if(!Array.isArray(list)||!list.length)return;
+  $('#hostedBox').hidden=false;$('#hostedList').innerHTML=list.map((c,i)=>'<li><button data-hosted="'+i+'"><span>'+esc(c.name||c.file)+'</span><span class="k">'+esc(c.note||'Load ↓')+'</span></button></li>').join('');
+  $('#hostedList').addEventListener('click',e=>{const b=e.target.closest('[data-hosted]');if(!b)return;const c=list[+b.dataset.hosted];$('#hostedStatus').textContent='Loading '+(c.name||c.file)+'…';
+    addClipSrc(c.file,c.name||c.file,!/\.(jpe?g|png|webp)$/i.test(c.file),c.fmt?{fmt:c.fmt}:null);if(typeof c.yaw==='number')setTimeout(()=>setYaw(c.yaw),300);setTimeout(()=>{$('#hostedStatus').textContent='';},4000);});
+}).catch(()=>{});
 $('#snowBtn').onclick=()=>setSnow(!WORLD.snow);
 $('#carBtn').onclick=()=>setCarriage(!CAR.on);$('#paxBtn').onclick=()=>setPassengers(!PAX.on);$('#voiceBtn').onclick=()=>setVoice(!VOICE.on);$('#shotBtn').onclick=requestPostcard;
 $('#phoneShot').onclick=e=>{e.stopPropagation();requestPostcard();};$('#pcClose').onclick=()=>{$('#postcard').hidden=true;};
