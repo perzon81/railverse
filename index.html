@@ -174,6 +174,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
       <button class="btn" id="deskBtn">Full screen · no headset</button>
       <button class="btn mobileonly" id="phoneBtn">Phone · tilt to look</button>
       <button class="btn mobileonly" id="cardBtn">Cardboard 3D</button>
+      <button class="btn mobileonly" id="cardSetupBtn">Set up viewer</button>
       <div class="status" id="vrStatus">Checking WebXR…</div>
     </div>
     <details class="cbfit">
@@ -182,7 +183,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
         <div class="row"><label for="cbShift">Image spacing</label><input type="range" id="cbShift" min="-96" max="96" step="4" value="0"><span id="cbShiftV" style="font-variant-numeric:tabular-nums;min-width:74px">0</span></div>
         <div class="row"><label for="cbSep">3D depth</label><input type="range" id="cbSep" min="0" max="120" step="10" value="100"><span id="cbSepV" style="font-variant-numeric:tabular-nums;min-width:74px">100 %</span></div>
         <div class="row"><label><input type="checkbox" id="cbFlat"> Flat 2D · same picture for both eyes, never double</label><button class="btn small" id="cbReset">Reset</button></div>
-        <p class="note">Two crosses side by side: change Image spacing. Only close things double: lower 3D depth. Inside Cardboard you can also look at <b>⚙ Fit</b> to the left of the info panel and adjust while you look at a cross. Rate the experience with <b>★ Rate</b> in every mode.</p>
+        <p class="note">Two crosses side by side: change Image spacing. Only close things double: lower 3D depth. Easiest: press <b>Set up viewer</b> for a guided 3-step setup in a calm room (it also starts the first time you use Cardboard). Inside the ride, look at <b>⚙ Setup</b> to the left of the info panel to redo it. Rate the experience with <b>★ Rate</b> in every mode.</p>
       </div>
     </details>
     <div class="chips" role="group" aria-label="Scene">
@@ -391,7 +392,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v32 · 10 Nov 19:45';
+const BUILD='v33 · 10 Nov 20:10';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  flam:{tag:'Synced to the Flåm Line 360 film',video:'flam',text:`10:00 Myrdal
@@ -1013,6 +1014,7 @@ async function enterPhone(mode){
   view.querySelector('.hint').textContent=mode==='cardboard'?'Tap the screen (or the viewer button) to select':'Tilt to look · tap to select · drag to turn';
   S.notes.unshift(Object.assign(snap(),{text:(mode==='cardboard'?'Cardboard 3D':'Phone tilt')+' mode started'+(PHONE.have?'':' (no motion sensor yet)')}));save();renderNotes();
   setTimeout(resize,80);setTimeout(resize,600);drawHUD();
+  if(mode==='cardboard'&&(!S.cb.done||PHONE.wantSetup))setTimeout(startSetup,900);PHONE.wantSetup=false;
 }
 function exitPhone(){
   PHONE.on=false;PHONE.mode='';view.classList.remove('phone','desk','cardboard','fs');camera.fov=72;camera.quaternion.identity();
@@ -1022,7 +1024,7 @@ function exitPhone(){
   view.querySelector('.hint').textContent='Drag to look around · In VR: trigger = scene/select, grip = HUD, stick click = marker';
   setTimeout(resize,80);drawHUD();
 }
-$('#phoneBtn').onclick=()=>enterPhone('phone');$('#cardBtn').onclick=()=>enterPhone('cardboard');$('#phoneExit').onclick=e=>{e.stopPropagation();exitPhone();};
+$('#phoneBtn').onclick=()=>enterPhone('phone');$('#cardSetupBtn').onclick=()=>{PHONE.wantSetup=true;enterPhone('cardboard');};$('#cardBtn').onclick=()=>enterPhone('cardboard');$('#phoneExit').onclick=e=>{e.stopPropagation();exitPhone();};
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&PHONE.on&&!view.classList.contains('fs'))exitPhone();});
 if(matchMedia('(pointer: coarse)').matches||('ontouchstart' in window))document.documentElement.classList.add('touch');
 
@@ -1390,7 +1392,7 @@ const FIGS=[
  {id:'goldtrain',name:'Golden train',pts:100,w:3,make:figGoldTrain,glow:'rgba(255,215,90,1)',fast:1.8}
 ];
 function pickFig(){const tot=FIGS.reduce((a,f)=>a+f.w,0);let r=Math.random()*tot;for(const f of FIGS){if((r-=f.w)<0)return f;}return FIGS[0];}
-function spawnToken(special){
+function spawnToken(special){if(typeof SETUP!=="undefined"&&SETUP.on)return;
   if(GAME.items.length>=6&&!special)return;
   const side=Math.random()<.5?-1:1,m=new THREE.Group();let fig=null,model;
   if(special){model=new THREE.Group();const core=new THREE.Mesh(tokenGeo,new THREE.MeshBasicMaterial({color:'#ffffff'}));const edge=new THREE.Mesh(tokenGeo,tokenEdge);edge.scale.setScalar(1.08);model.add(core,edge);}
@@ -1641,7 +1643,7 @@ function selectFromRay(o,d){
   return false;
 }
 const handTokGeo=new THREE.OctahedronGeometry(0.05,0);
-function spawnHandToken(){const m=new THREE.Group();m.add(new THREE.Mesh(handTokGeo,tokenMat),new THREE.Mesh(handTokGeo,tokenEdge));const g=glowSprite('rgba(255,200,110,.9)','rgba(255,120,40,0)',0.35);m.add(g);
+function spawnHandToken(){if(typeof SETUP!=="undefined"&&SETUP.on)return;const m=new THREE.Group();m.add(new THREE.Mesh(handTokGeo,tokenMat),new THREE.Mesh(handTokGeo,tokenEdge));const g=glowSprite('rgba(255,200,110,.9)','rgba(255,120,40,0)',0.35);m.add(g);
   const tx=(Math.random()-.5)*0.6,ty=-0.15+Math.random()*0.35,tz=-0.38-Math.random()*0.15;m.position.set(tx,ty+0.4,-5);m.userData={tx,ty,tz,t:0};rig.add(m);HANDS.items.push(m);}
 function handsUpdate(dt){
   if(!renderer.xr.isPresenting){HANDS.active=false;return;}
@@ -1712,6 +1714,10 @@ function drawMenu(){const c=menuCanvas.getContext('2d'),W=1024,H=560;c.clearRect
       if(MENU.step>0)btn('back',52,430,220,84,'‹ Back',{font:'bold 34px '});
       btn('skip',W-272,430,220,84,'Skip',{font:'bold 34px '});
       c.fillStyle='#8f9cc8';c.font='22px '+F;c.fillText(tap,W/2,472,400);}
+  } else if(MENU.kind==='setup'){
+    const row=(y,name,val,m,p,hint)=>{c.textAlign='left';c.fillStyle='#fff';c.font='bold 34px '+F;c.fillText(name,90,y+20);c.font='22px '+F;c.fillStyle='#8f9cc8';c.fillText(hint,90,y+56);c.textAlign='center';
+      btn(m,560,y-10,110,84,'−',{font:'bold 60px '});c.fillStyle='#fff';c.font='bold 36px '+F;c.fillText(val,770,y+32);btn(p,870,y-10,110,84,'+',{font:'bold 60px '});};
+    drawSetup(c,W,btn,row);
   } else if(MENU.kind==='fit'){
     c.fillStyle='#ff8a5c';c.font='bold 26px '+F;c.fillText('CARDBOARD FIT',W/2,52);
     c.fillStyle='#fff';c.font='26px '+F;c.fillText('Look at the cross. Adjust until you see one sharp cross.',W/2,92);
@@ -1732,7 +1738,7 @@ function closeMenu(){MENU.kind=null;menuMesh.visible=false;MENU.hov=null;}
 function hudBtn(label,y){const t=canvasTex(256,96,(c,w,h)=>{rr(c,4,4,w-8,h-8,40);c.fillStyle='rgba(10,21,64,.92)';c.fill();c.lineWidth=5;c.strokeStyle='#ff5a26';c.stroke();
     c.fillStyle='#fff';c.font='bold 40px '+F;c.textAlign='center';c.textBaseline='middle';c.fillText(label,w/2,h/2+2);});
   const m=new THREE.Mesh(new THREE.PlaneGeometry(0.2,0.075),new THREE.MeshBasicMaterial({map:t,transparent:true,depthTest:false}));m.renderOrder=11;m.position.set(-0.7,y,0.002);m.visible=false;hud.add(m);return m;}
-const rateBtn=hudBtn('★ Rate',-0.19),fitBtn=hudBtn('⚙ Fit',-0.09);
+const rateBtn=hudBtn('★ Rate',-0.19),fitBtn=hudBtn('⚙ Setup',-0.09);
 ctls.forEach(c=>{c.addEventListener('connected',()=>{c.userData.on=true;});c.addEventListener('disconnected',()=>{c.userData.on=false;});});
 function menuRays(){if(renderer.xr.isPresenting)return ctls.filter(c=>c.userData.on).map(ctlRay);ray.setFromCamera(new THREE.Vector2(0,0),camera);return [[ray.ray.origin.clone(),ray.ray.direction.clone()]];}
 function menuHit(o,d){ray.set(o,d);
@@ -1742,16 +1748,17 @@ function menuHit(o,d){ray.set(o,d);
   if(fitBtn.visible&&ray.intersectObject(fitBtn,false).length)return 'openFit';return null;}
 const REPEAT=/^(spm|spp|dpm|dpp)$/;
 function menuPress(id){if(!id)return false;if(id==='panel')return true;
-  if(id==='openRate'){openMenu('rate');ding(true);return true;} if(id==='openFit'){openMenu('fit');ding(true);return true;}
+  if(id==='openRate'){openMenu('rate');ding(true);return true;} if(id==='openFit'){startSetup();ding(true);return true;}
   if(MENU.kind==='rate'){
     if(id==='close'){closeMenu();return true;}
     if(id==='back'){MENU.step=Math.max(0,MENU.step-1);}
     else if(id==='skip'||id[0]==='v'){const q=RQ[MENU.step];if(id[0]==='v'){MENU.ans[q[0]]=+id.slice(1);ding(true);}MENU.step++;if(MENU.step>=RQ.length)saveRating();}
-  } else if(MENU.kind==='fit'){const cb=S.cb;
+  } else if(MENU.kind==='setup'&&/^su_/.test(id)){setupPress(id);
+  } else if(MENU.kind==='fit'||MENU.kind==='setup'){const cb=S.cb;
     if(id==='spm'||id==='spp'){cb.shift=Math.max(-96,Math.min(96,cbShift()+(id==='spp'?4:-4)));}
     if(id==='dpm'||id==='dpp'){cb.flat=false;cb.sep=Math.max(0,Math.min(0.0768,+(cb.sep+(id==='dpp'?0.0064:-0.0064)).toFixed(4)));}
     if(id==='flat')cb.flat=!cb.flat;
-    if(id==='reset')S.cb={sep:0.064,shift:null,flat:false};
+    if(id==='reset')S.cb={sep:0.064,shift:null,flat:false,done:S.cb.done};
     if(id==='done')closeMenu();
     save();syncCb();}
   pulseAll(0.3,40);if(MENU.kind)drawMenu();return true;}
@@ -1763,7 +1770,7 @@ function saveRating(){const a=MENU.ans,parts=RQ.filter(q=>a[q[0]]).map(q=>RATES.
   if(parts.length)say('Thank you for your rating.');}
 function menuUpdate(dt){const imm=immersive();
   rateBtn.visible=imm&&!MENU.kind&&!CHK.active&&!GAME.guessActive;fitBtn.visible=imm&&PHONE.mode==='cardboard'&&!MENU.kind;
-  if(!imm){if(MENU.kind)closeMenu();return;}
+  if(!imm){if(SETUP.on)endSetup();else if(MENU.kind)closeMenu();return;}
   let hov=null;for(const [o,d] of menuRays()){const h=menuHit(o,d);if(h&&h!=='panel'){hov=h;break;}}
   if(MENU.lockNext){MENU.lockNext=false;MENU.lock=hov;}
   rateBtn.scale.setScalar(hov==='openRate'?1.15:1);fitBtn.scale.setScalar(hov==='openFit'?1.15:1);
@@ -1780,8 +1787,45 @@ function syncCb(){const sh=cbShift();const l=view.querySelector('.reticle.eye.l'
 document.getElementById('cbShift').addEventListener('input',e=>{S.cb.shift=+e.target.value;save();syncCb();});
 document.getElementById('cbSep').addEventListener('input',e=>{S.cb.sep=+(e.target.value/100*0.064).toFixed(4);S.cb.flat=false;save();syncCb();});
 document.getElementById('cbFlat').addEventListener('change',e=>{S.cb.flat=e.target.checked;save();syncCb();});
-document.getElementById('cbReset').addEventListener('click',()=>{S.cb={sep:0.064,shift:null,flat:false};save();syncCb();});
+document.getElementById('cbReset').addEventListener('click',()=>{S.cb={sep:0.064,shift:null,flat:false,done:S.cb.done};save();syncCb();});
 window.addEventListener('resize',()=>setTimeout(syncCb,120));syncCb();
+/* ---------- Cardboard setup room: a calm empty space with crosses near and far, guided in 3 steps ---------- */
+const SETUP={on:false,step:0,prev:null};
+const setupG=new THREE.Group();setupG.visible=false;scene.add(setupG);
+(()=>{const sky=new THREE.Mesh(new THREE.SphereGeometry(60,32,16),new THREE.MeshBasicMaterial({side:THREE.BackSide,map:canvasTex(16,256,(c,w,h)=>{const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,'#03081f');g.addColorStop(.5,'#16285e');g.addColorStop(.52,'#0d1a3e');g.addColorStop(1,'#050a1c');c.fillStyle=g;c.fillRect(0,0,w,h);})}));setupG.add(sky);
+  const grid=new THREE.GridHelper(80,80,'#ff5a26','#2d4180');grid.position.y=-1.25;grid.material.transparent=true;grid.material.opacity=0.55;setupG.add(grid);
+  for(let i=0;i<14;i++){const a=i/14*Math.PI*2,r=8+(i%3)*7;const p=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,2.4,8),basic(i%2?'#ff5a26':'#9fb2ea'));p.position.set(Math.cos(a)*r,-0.05,Math.sin(a)*r);setupG.add(p);}})();
+const crossTex=(col,ring)=>canvasTex(256,256,(c,w,h)=>{c.strokeStyle=col;c.lineWidth=14;c.beginPath();c.moveTo(20,h/2);c.lineTo(w-20,h/2);c.moveTo(w/2,20);c.lineTo(w/2,h-20);c.stroke();if(ring){c.lineWidth=10;c.beginPath();c.arc(w/2,h/2,70,0,7);c.stroke();}});
+const farCross=new THREE.Mesh(new THREE.PlaneGeometry(4.5,4.5),new THREE.MeshBasicMaterial({map:crossTex('#ffffff',true),transparent:true}));setupG.add(farCross);
+const nearCross=new THREE.Mesh(new THREE.PlaneGeometry(0.11,0.11),new THREE.MeshBasicMaterial({map:crossTex('#ff5a26',false),transparent:true,depthTest:false}));nearCross.renderOrder=21;setupG.add(nearCross);
+function startSetup(){if(!PHONE.on)return;
+  if(!SETUP.on){const all=scene.children.concat(rig.children);SETUP.prev=all.map(o=>[o,o.visible]);all.forEach(o=>{if(o!==setupG&&o!==menuMesh&&o!==rig&&o!==camera)o.visible=false;});}
+  SETUP.on=true;setupG.visible=true;
+  const p=new THREE.Vector3(),d=new THREE.Vector3();camera.getWorldPosition(p);camera.getWorldDirection(d);d.y=0;if(d.lengthSq()<1e-4)d.set(0,0,-1);d.normalize();
+  setupG.position.set(p.x,0,p.z);
+  farCross.position.copy(p).addScaledVector(d,25);farCross.position.y=p.y+4.4;farCross.lookAt(p);
+  nearCross.position.copy(p).addScaledVector(d,0.9);nearCross.position.y=p.y+0.13;nearCross.lookAt(p);
+  MENU.kind='setup';MENU.step=0;MENU.hov=null;MENU.dwell=0;MENU.lock=null;MENU.lockNext=true;
+  menuMesh.position.copy(p).addScaledVector(d,1.4);menuMesh.position.y=p.y-0.25;menuMesh.lookAt(p);menuMesh.visible=true;setupStep(0);}
+function setupStep(n){MENU.step=n;farCross.visible=n===1;nearCross.visible=n===2;MENU.lockNext=true;drawMenu();}
+function endSetup(){SETUP.on=false;setupG.visible=false;if(SETUP.prev)SETUP.prev.forEach(([o,v])=>{o.visible=v;});SETUP.prev=null;hud.visible=S.hud;
+  closeMenu();}
+function drawSetup(c,W,btn,row){const st=MENU.step;c.textAlign='center';
+  const head=(t1,t2,t3)=>{c.fillStyle='#ff8a5c';c.font='bold 26px '+F;c.fillText(t1,W/2,58);c.fillStyle='#fff';c.font='bold 50px '+F;c.fillText(t2,W/2,122);c.fillStyle='#c9d2f0';c.font='28px '+F;(t3||[]).forEach((l,i)=>c.fillText(l,W/2,182+i*42,W-80));};
+  if(st===0){head('SET UP YOUR VIEWER','Welcome aboard',['Put the phone in the viewer and look straight ahead.','Three short steps make the picture sharp and single.','Choose by looking at a button for a second,','or press the button on the viewer.']);
+    btn('su_skip',90,420,300,96,'Skip',{font:'bold 36px '});btn('su_start',W-390,420,300,96,'Start',{font:'bold 40px ',on:true});}
+  else if(st===1){head('STEP 1 OF 3 · IMAGE SPACING','Look at the big cross far away',['See two crosses side by side? Press − or + until they become one.']);
+    row(262,'Image spacing',(cbShift()>0?'+':'')+cbShift(),'spm','spp','Keep looking at the cross while you adjust');
+    btn('su_back',90,420,260,96,'‹ Back',{font:'bold 34px '});btn('su_n2',W-450,420,360,96,'One cross ✓',{font:'bold 38px ',on:true});}
+  else if(st===2){head('STEP 2 OF 3 · 3D DEPTH','Look at the small orange cross',['It floats just above this panel, close to you. Is it double?','Press − to lower the depth. Still double at 0 %? Choose Flat 2D.']);
+    row(282,'3D depth',S.cb.flat?'Flat 2D':Math.round(S.cb.sep/0.064*100)+' %','dpm','dpp','Lower = easier on the eyes, less depth');
+    btn('su_b1',60,420,240,96,'‹ Back',{font:'bold 34px '});btn('flat',330,420,300,96,S.cb.flat?'Flat 2D: on':'Flat 2D',{font:'bold 34px ',on:S.cb.flat});btn('su_n3',W-364,420,304,96,'Looks good ✓',{font:'bold 36px ',on:true});}
+  else{head('STEP 3 OF 3 · DONE','All set!',['Image spacing '+(cbShift()>0?'+':'')+cbShift()+'  ·  3D depth '+(S.cb.flat?'Flat 2D':Math.round(S.cb.sep/0.064*100)+' %'),'Saved on this phone. Look at ⚙ Setup any time to redo it.']);
+    btn('su_redo',90,420,300,96,'Redo',{font:'bold 36px '});btn('su_go',W-450,420,360,96,'Start the ride',{font:'bold 38px ',on:true});}}
+function setupPress(id){
+  if(id==='su_skip'||id==='su_go'){S.cb.done=true;save();endSetup();return;}
+  if(id==='su_start'||id==='su_back'||id==='su_b1'){setupStep(id==='su_b1'?1:id==='su_start'?1:0);return;}
+  if(id==='su_n2')return setupStep(2);if(id==='su_n3')return setupStep(3);if(id==='su_redo')return setupStep(1);}
 const clock=new THREE.Clock();let hudT=0,markFlash=0;const padPrev={};
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
