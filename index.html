@@ -176,6 +176,15 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
       <button class="btn mobileonly" id="cardBtn">Cardboard 3D</button>
       <div class="status" id="vrStatus">Checking WebXR…</div>
     </div>
+    <details class="cbfit">
+      <summary class="note" style="cursor:pointer">Cardboard fit · if things look double</summary>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+        <div class="row"><label for="cbShift">Image spacing</label><input type="range" id="cbShift" min="-96" max="96" step="4" value="0"><span id="cbShiftV" style="font-variant-numeric:tabular-nums;min-width:74px">0</span></div>
+        <div class="row"><label for="cbSep">3D depth</label><input type="range" id="cbSep" min="0" max="120" step="10" value="100"><span id="cbSepV" style="font-variant-numeric:tabular-nums;min-width:74px">100 %</span></div>
+        <div class="row"><label><input type="checkbox" id="cbFlat"> Flat 2D · same picture for both eyes, never double</label><button class="btn small" id="cbReset">Reset</button></div>
+        <p class="note">Two crosses side by side: change Image spacing. Only close things double: lower 3D depth. Inside Cardboard you can also look at <b>⚙ Fit</b> to the left of the info panel and adjust while you look at a cross. Rate the experience with <b>★ Rate</b> in every mode.</p>
+      </div>
+    </details>
     <div class="chips" role="group" aria-label="Scene">
       <button class="chip" data-mode="day" aria-pressed="true"><b>Day</b> · Live Train View</button>
       <button class="chip" data-mode="cinema" aria-pressed="false"><b>Evening</b> · Private cinema</button>
@@ -382,7 +391,7 @@ section.log{grid-column:1/-1;display:flex;flex-direction:column;gap:16px}
 (function(){
 const $=s=>document.querySelector(s);
 const KEY='railverse-proto-v3';
-const BUILD='v31 · 9 Nov 17:05';
+const BUILD='v32 · 10 Nov 19:45';
 const BRIDGE_CODE="(()=>{const T='https://perzon81.github.io';const O=location.origin;const w=window.open(T+'/railverse/','railverse');const src=\"setInterval(async()=>{try{const r=await fetch('\"+O+\"/api/jsonp/position/?callback=x&t='+Date.now(),{cache:'no-store'});postMessage(await r.text())}catch(e){postMessage('ERR '+e)}},2000)\";const wk=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));let n=0;wk.onmessage=e=>{try{const j=JSON.parse(String(e.data).trim().replace(/^[^(]*\\(/,'').replace(/\\)\\s*;?\\s*$/,''));w.postMessage({rv:'pos',d:j},T);n++;document.title='RailVerse bridge '+n;}catch(x){document.title='RailVerse bridge error';}};document.body.insertAdjacentHTML('afterbegin','<h1 style=\"font:24px sans-serif;color:#0a1540\">RailVerse bridge running. Keep this tab open.</h1>');})()";
 const PRESETS={
  flam:{tag:'Synced to the Flåm Line 360 film',video:'flam',text:`10:00 Myrdal
@@ -444,7 +453,7 @@ let S={mode:'day',moving:true,speed:200,hud:true,preset:'sj',routes:{flam:PRESET
 try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){S=Object.assign(S,d,{sim:false});S.routes=Object.assign({flam:PRESETS.flam.text,vs:PRESETS.vs.text,sv:PRESETS.sv.text,sj184:PRESETS.sj184.text,sj:PRESETS.sj.text,dream:PRESETS.dream.text,trip:PRESETS.trip.text},d.routes||{});}}catch(e){}
 try{if(!localStorage.getItem('rv-return-184')){localStorage.setItem('rv-return-184','1');S.preset='sj184';S.tv=Object.assign({},S.tv,PRESETS.sj184.tv);}}catch(e){}
 if(!S.tv.key)S.tv.key='22e7c179c58c4d7eb5cd44c7fe600e6d';
-function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt,game:S.game,voice:S.voice,carriage:S.carriage,passengers:S.passengers,lastClip:S.lastClip}));}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({track:S.track,routes:S.routes,preset:S.preset,tests:S.tests,notes:S.notes,speed:S.speed,liveSpeed:S.liveSpeed,tv:S.tv,yt:S.yt,game:S.game,voice:S.voice,cb:S.cb,carriage:S.carriage,passengers:S.passengers,lastClip:S.lastClip}));}catch(e){}}
 
 /* ---------- live onboard data (train Wi-Fi portal) ---------- */
 const LIVE={speed:0,lat:0,lon:0,at:0,tries:0,ok:0,src:'',tvErr:'',diag:{fetch:'–',script:'–',bridge:''}};
@@ -939,7 +948,7 @@ const ctls=[];
 function ctlRay(ctl){tmpM.identity().extractRotation(ctl.matrixWorld);const o=new THREE.Vector3().setFromMatrixPosition(ctl.matrixWorld);const d=new THREE.Vector3(0,0,-1).applyMatrix4(tmpM);return [o,d];}
 for(let i=0;i<2;i++){const ctl=renderer.xr.getController(i);
   const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-1)]),new THREE.LineBasicMaterial({color:'#ff5a26'}));line.scale.z=3;line.visible=false;ctl.add(line);ctl.userData.line=line;
-  ctl.addEventListener('selectstart',()=>{if(CHK.active)return;
+  ctl.addEventListener('selectstart',()=>{if(typeof menuHit==='function'){const [o,d]=ctlRay(ctl);if(menuPress(menuHit(o,d)))return;}if(CHK.active)return;
     if(S.mode==='cinema'){const [o,d]=ctlRay(ctl);if(activateCinema(hitCinema(o,d)))return;}
     if((S.mode==='day'||panoGame())&&S.game.on){const [o,d]=ctlRay(ctl);const m=GAME.items.find(m=>m.position.clone().sub(o).normalize().dot(d)>0.97);if(m){catchItem(m);return;}}
     if(S.mode==='pano'){const [o,d]=ctlRay(ctl);ray.set(o,d);if(ray.intersectObject(ytSign,false).length){handoffYT();return;}}setMode(ORDER[(ORDER.indexOf(S.mode)+1)%ORDER.length]);});
@@ -968,10 +977,11 @@ function phoneCamera(){
 }
 const stereo=new THREE.StereoCamera();stereo.eyeSep=0.064;stereo.cameraL.layers.enable(1);stereo.cameraR.layers.enable(2);
 function renderStereo(){
+  const cb=S.cb||{};stereo.eyeSep=cb.flat?0:(cb.sep!=null?cb.sep:0.064);const sh=typeof cbShift==='function'?cbShift():0;
   camera.updateMatrixWorld();stereo.update(camera);const sz=renderer.getSize(new THREE.Vector2()),w=sz.x/2;
   renderer.setScissorTest(true);
-  renderer.setScissor(0,0,w,sz.y);renderer.setViewport(0,0,w,sz.y);renderer.render(scene,stereo.cameraL);
-  renderer.setScissor(w,0,w,sz.y);renderer.setViewport(w,0,w,sz.y);renderer.render(scene,stereo.cameraR);
+  renderer.setScissor(0,0,w,sz.y);renderer.setViewport(sh,0,w,sz.y);renderer.render(scene,stereo.cameraL);
+  renderer.setScissor(w,0,w,sz.y);renderer.setViewport(w-sh,0,w,sz.y);renderer.render(scene,stereo.cameraR);
   renderer.setScissorTest(false);renderer.setViewport(0,0,sz.x,sz.y);
 }
 // look at a poster, the screen or the YouTube sign for 1.2 s to select it (no buttons needed)
@@ -982,7 +992,7 @@ function phoneDwell(dt){
   const rets=view.querySelectorAll('.reticle');
   if(hit&&hit===PHONE.dwellObj){PHONE.dwellT+=dt;if(PHONE.dwellT>1.2){PHONE.dwellT=-1.5;if(hit===ytSign)handoffYT();else activateCinema(hit);}}
   else{PHONE.dwellObj=hit;PHONE.dwellT=0;}
-  rets.forEach(r=>r.classList.toggle('dwell',!!hit&&PHONE.dwellT>0));
+  rets.forEach(r=>r.classList.toggle('dwell',(!!hit&&PHONE.dwellT>0)||(!!MENU.hov&&MENU.hov!==MENU.lock)));
   if(PHONE.mode==='cardboard'&&CHK.active&&CHK.tapAt&&Date.now()-CHK.tapAt>3000){CHK.tapAt=0;endCheckin(CHK.sel);}
   if(PHONE.mode==='cardboard'&&GAME.guessActive&&GAME.tapAt&&Date.now()-GAME.tapAt>3000){GAME.tapAt=0;lockGuess(GAME.guessSel);}
 }
@@ -1018,6 +1028,7 @@ if(matchMedia('(pointer: coarse)').matches||('ontouchstart' in window))document.
 
 /* ---------- desktop immersive mode (no headset) ---------- */
 function centerSelect(){
+  {ray.setFromCamera(new THREE.Vector2(0,0),camera);if(menuPress(menuHit(ray.ray.origin.clone(),ray.ray.direction.clone())))return;}
   if(CHK.active){endCheckin(CHK.sel);return;} if(GAME.guessActive){lockGuess(GAME.guessSel);return;}
   ray.setFromCamera(new THREE.Vector2(0,0),camera);
   if(S.mode==='cinema'){const h=ray.intersectObjects(cineTargets,false)[0];if(h)activateCinema(h.object);return;}
@@ -1666,6 +1677,111 @@ function pulseAll(v,ms){const ses=renderer.xr.getSession&&renderer.xr.getSession
 function startCheckin(){CHK.active=true;CHK.sel=1;CHK.since=0;pulseAll(0.5,150);drawHUD();}
 function endCheckin(v){CHK.active=false;CHK.next=CHK.vrTime+600;
   S.notes.unshift(Object.assign(snap(),{text:v?'Check-in: motion sickness '+v+'/5 ('+CHK_LABELS[v-1]+')':'Check-in skipped',checkin:v||''}));save();renderNotes();drawHUD();}
+/* ---------- in-view menus: rate the experience + Cardboard fit (VR headset, full screen, phone and Cardboard) ---------- */
+S.cb=Object.assign({sep:0.064,shift:null,flat:false},S.cb||{});
+function cbAutoShift(){const w=view.clientWidth||800;return Math.max(0,Math.min(60,Math.round(w/4-200)));}
+function cbShift(){return S.cb.shift===null||S.cb.shift===undefined?cbAutoShift():S.cb.shift;}
+const DWELL=1.1;
+const MENU={kind:null,step:0,ans:{},btns:[],hov:null,dwell:0,drawT:0,lock:null};
+const menuCanvas=document.createElement('canvas');menuCanvas.width=1024;menuCanvas.height=560;
+const menuTex=new THREE.CanvasTexture(menuCanvas);
+const menuMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.2,0.656),new THREE.MeshBasicMaterial({map:menuTex,transparent:true,depthTest:false}));
+menuMesh.renderOrder=20;menuMesh.visible=false;menuMesh.layers.enableAll();scene.add(menuMesh);
+const RQ=[['wow','How was the experience?',['Flat','Meh','OK','Good','Wow']],
+ ['comfort','How comfortable was it?',['Poor','Low','OK','Good','Great']],
+ ['sick','Any motion sickness?',['None','Slight','Noticeable','Queasy','Severe']],
+ ['track','How steady was the view?',['Shaky','Jumpy','OK','Steady','Solid']]];
+function drawMenu(){const c=menuCanvas.getContext('2d'),W=1024,H=560;c.clearRect(0,0,W,H);
+  rr(c,6,6,W-12,H-12,40);c.fillStyle='rgba(10,21,64,.95)';c.fill();c.lineWidth=4;c.strokeStyle='rgba(255,255,255,.3)';c.stroke();
+  MENU.btns=[];c.textAlign='center';c.textBaseline='middle';
+  const need=id=>/^open/.test(id)?1.6:DWELL;
+  const btn=(id,x,y,w,h,label,o={})=>{const hv=MENU.hov===id;rr(c,x,y,w,h,22);c.fillStyle=o.on?'#ff5a26':hv?'#ffffff':'rgba(255,255,255,.13)';c.fill();
+    if(o.sel){c.lineWidth=6;c.strokeStyle='#ff5a26';c.stroke();}
+    if(hv&&PHONE.on&&MENU.dwell>0){c.fillStyle='#ff5a26';c.fillRect(x+10,y+h-12,(w-20)*Math.min(1,MENU.dwell/need(id)),7);}
+    c.fillStyle=hv&&!o.on?'#0a1540':'#fff';c.font=(o.font||'bold 42px ')+F;c.fillText(label,x+w/2,y+h/2+(o.sub?-18:2),w-16);
+    if(o.sub){c.font='bold 25px '+F;c.fillText(o.sub,x+w/2,y+h/2+44,w-12);}
+    MENU.btns.push({id,x,y,w,h});};
+  const tap=PHONE.mode==='cardboard'?'Look at a choice for a second, or press the viewer button':PHONE.on?'Look at a choice for a second, or tap':renderer.xr.isPresenting?'Point and pull the trigger':'Aim the dot and click';
+  if(MENU.kind==='rate'){
+    if(MENU.step>=RQ.length){c.fillStyle='#fff';c.font='bold 60px '+F;c.fillText('Thank you!',W/2,120);
+      c.font='30px '+F;c.fillStyle='#c9d2f0';RQ.forEach((q,i)=>{const v=MENU.ans[q[0]];c.fillText(RATES.find(r=>r[0]===q[0])[1]+':  '+(v?v+' / 5 · '+q[2][v-1]:'skipped'),W/2,200+i*46);});
+      c.font='24px '+F;c.fillText('Saved in the test log',W/2,395);btn('close',W/2-140,430,280,90,'Close');}
+    else{const q=RQ[MENU.step];c.fillStyle='#ff8a5c';c.font='bold 26px '+F;c.fillText('RATE THE EXPERIENCE  ·  '+(MENU.step+1)+' / '+RQ.length,W/2,62);
+      c.fillStyle='#fff';c.font='bold 52px '+F;c.fillText(q[1],W/2,128);
+      for(let i=0;i<5;i++)btn('v'+(i+1),52+i*186,190,172,200,String(i+1),{sub:q[2][i],font:'bold 76px '});
+      if(MENU.step>0)btn('back',52,430,220,84,'‹ Back',{font:'bold 34px '});
+      btn('skip',W-272,430,220,84,'Skip',{font:'bold 34px '});
+      c.fillStyle='#8f9cc8';c.font='22px '+F;c.fillText(tap,W/2,472,400);}
+  } else if(MENU.kind==='fit'){
+    c.fillStyle='#ff8a5c';c.font='bold 26px '+F;c.fillText('CARDBOARD FIT',W/2,52);
+    c.fillStyle='#fff';c.font='26px '+F;c.fillText('Look at the cross. Adjust until you see one sharp cross.',W/2,92);
+    c.strokeStyle='#ff5a26';c.lineWidth=6;c.beginPath();c.moveTo(W/2-40,150);c.lineTo(W/2+40,150);c.moveTo(W/2,110);c.lineTo(W/2,190);c.stroke();
+    c.beginPath();c.arc(W/2,150,26,0,7);c.stroke();
+    const row=(y,name,val,m,p,hint)=>{c.textAlign='left';c.fillStyle='#fff';c.font='bold 34px '+F;c.fillText(name,60,y+20);c.font='22px '+F;c.fillStyle='#8f9cc8';c.fillText(hint,60,y+56);c.textAlign='center';
+      btn(m,560,y-10,110,84,'−',{font:'bold 60px '});c.fillStyle='#fff';c.font='bold 36px '+F;c.fillText(val,770,y+32);btn(p,870,y-10,110,84,'+',{font:'bold 60px '});};
+    const sh=cbShift();row(222,'Image spacing',(sh>0?'+':'')+sh+(S.cb.shift===null?' auto':''),'spm','spp','Two crosses side by side? Change this');
+    row(330,'3D depth',S.cb.flat?'off':Math.round(S.cb.sep/0.064*100)+' %','dpm','dpp','Still double up close? Lower this');
+    btn('flat',60,440,280,84,S.cb.flat?'Flat 2D: on':'Flat 2D: off',{font:'bold 32px ',on:S.cb.flat});
+    btn('reset',372,440,280,84,'Reset',{font:'bold 32px '});
+    btn('done',684,440,280,84,'Done',{font:'bold 34px ',on:true});}
+  menuTex.needsUpdate=true;}
+function openMenu(kind){MENU.kind=kind;MENU.step=0;MENU.ans={};MENU.hov=null;MENU.dwell=0;MENU.lock=null;MENU.lockNext=true;
+  const cam=renderer.xr.isPresenting?renderer.xr.getCamera(camera):camera,p=new THREE.Vector3(),d=new THREE.Vector3();cam.getWorldPosition(p);cam.getWorldDirection(d);
+  d.y=Math.max(-0.3,Math.min(0.3,d.y));d.normalize();menuMesh.position.copy(p).addScaledVector(d,1.35);menuMesh.lookAt(p);menuMesh.visible=true;drawMenu();}
+function closeMenu(){MENU.kind=null;menuMesh.visible=false;MENU.hov=null;}
+function hudBtn(label,y){const t=canvasTex(256,96,(c,w,h)=>{rr(c,4,4,w-8,h-8,40);c.fillStyle='rgba(10,21,64,.92)';c.fill();c.lineWidth=5;c.strokeStyle='#ff5a26';c.stroke();
+    c.fillStyle='#fff';c.font='bold 40px '+F;c.textAlign='center';c.textBaseline='middle';c.fillText(label,w/2,h/2+2);});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(0.2,0.075),new THREE.MeshBasicMaterial({map:t,transparent:true,depthTest:false}));m.renderOrder=11;m.position.set(-0.7,y,0.002);m.visible=false;hud.add(m);return m;}
+const rateBtn=hudBtn('★ Rate',-0.19),fitBtn=hudBtn('⚙ Fit',-0.09);
+ctls.forEach(c=>{c.addEventListener('connected',()=>{c.userData.on=true;});c.addEventListener('disconnected',()=>{c.userData.on=false;});});
+function menuRays(){if(renderer.xr.isPresenting)return ctls.filter(c=>c.userData.on).map(ctlRay);ray.setFromCamera(new THREE.Vector2(0,0),camera);return [[ray.ray.origin.clone(),ray.ray.direction.clone()]];}
+function menuHit(o,d){ray.set(o,d);
+  if(MENU.kind){const h=ray.intersectObject(menuMesh,false)[0];if(!h||!h.uv)return null;const x=h.uv.x*1024,y=(1-h.uv.y)*560;const b=MENU.btns.find(b=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h);return b?b.id:'panel';}
+  if(!hud.visible)return null;
+  if(rateBtn.visible&&ray.intersectObject(rateBtn,false).length)return 'openRate';
+  if(fitBtn.visible&&ray.intersectObject(fitBtn,false).length)return 'openFit';return null;}
+const REPEAT=/^(spm|spp|dpm|dpp)$/;
+function menuPress(id){if(!id)return false;if(id==='panel')return true;
+  if(id==='openRate'){openMenu('rate');ding(true);return true;} if(id==='openFit'){openMenu('fit');ding(true);return true;}
+  if(MENU.kind==='rate'){
+    if(id==='close'){closeMenu();return true;}
+    if(id==='back'){MENU.step=Math.max(0,MENU.step-1);}
+    else if(id==='skip'||id[0]==='v'){const q=RQ[MENU.step];if(id[0]==='v'){MENU.ans[q[0]]=+id.slice(1);ding(true);}MENU.step++;if(MENU.step>=RQ.length)saveRating();}
+  } else if(MENU.kind==='fit'){const cb=S.cb;
+    if(id==='spm'||id==='spp'){cb.shift=Math.max(-96,Math.min(96,cbShift()+(id==='spp'?4:-4)));}
+    if(id==='dpm'||id==='dpp'){cb.flat=false;cb.sep=Math.max(0,Math.min(0.0768,+(cb.sep+(id==='dpp'?0.0064:-0.0064)).toFixed(4)));}
+    if(id==='flat')cb.flat=!cb.flat;
+    if(id==='reset')S.cb={sep:0.064,shift:null,flat:false};
+    if(id==='done')closeMenu();
+    save();syncCb();}
+  pulseAll(0.3,40);if(MENU.kind)drawMenu();return true;}
+function saveRating(){const a=MENU.ans,parts=RQ.filter(q=>a[q[0]]).map(q=>RATES.find(r=>r[0]===q[0])[1]+' '+a[q[0]]+'/5');
+  const run=TESTS.find(T=>{const s=S.tests[T.id];return s&&s.start&&!s.end;}),tid=run?run.id:(PHONE.on?'card':null);
+  if(tid){const s=tstate(tid);RQ.forEach(q=>{if(a[q[0]])s[q[0]]=a[q[0]];});if(!s.start){s.start=clockNow();s.where=whereText();}}
+  const how=renderer.xr.isPresenting?'VR headset':PHONE.mode==='cardboard'?'Cardboard':PHONE.on?'Phone':'Full screen';
+  S.notes.unshift(Object.assign(snap(),{text:'Rating · '+how+': '+(parts.join(' · ')||'all skipped'),rating:a}));save();renderNotes();renderTests();
+  if(parts.length)say('Thank you for your rating.');}
+function menuUpdate(dt){const imm=immersive();
+  rateBtn.visible=imm&&!MENU.kind&&!CHK.active&&!GAME.guessActive;fitBtn.visible=imm&&PHONE.mode==='cardboard'&&!MENU.kind;
+  if(!imm){if(MENU.kind)closeMenu();return;}
+  let hov=null;for(const [o,d] of menuRays()){const h=menuHit(o,d);if(h&&h!=='panel'){hov=h;break;}}
+  if(MENU.lockNext){MENU.lockNext=false;MENU.lock=hov;}
+  rateBtn.scale.setScalar(hov==='openRate'?1.15:1);fitBtn.scale.setScalar(hov==='openFit'?1.15:1);
+  if(hov!==MENU.hov){MENU.hov=hov;MENU.dwell=0;if(MENU.lock&&hov!==MENU.lock)MENU.lock=null;if(MENU.kind)drawMenu();}
+  if(PHONE.on&&hov&&hov!==MENU.lock){MENU.dwell+=dt;const need=/^open/.test(hov)?1.6:DWELL;
+    if(MENU.dwell>=need){if(REPEAT.test(hov)){MENU.dwell=-0.4;}else{MENU.dwell=0;MENU.lock=hov;}menuPress(hov);}
+    MENU.drawT+=dt;if(MENU.kind&&MENU.drawT>0.08){MENU.drawT=0;drawMenu();}}
+  view.querySelectorAll('.reticle').forEach(r=>{if(hov&&PHONE.on)r.classList.add('dwell');});}
+function syncCb(){const sh=cbShift();const l=view.querySelector('.reticle.eye.l'),r=view.querySelector('.reticle.eye.r');
+  if(l){l.style.left='calc(25% + '+sh+'px)';r.style.left='calc(75% - '+sh+'px)';}
+  const e=id=>document.getElementById(id);if(!e('cbShift'))return;
+  e('cbShift').value=sh;e('cbShiftV').textContent=(sh>0?'+':'')+sh+(S.cb.shift===null?' (auto)':'');
+  e('cbSep').value=Math.round(S.cb.sep/0.064*100);e('cbSepV').textContent=Math.round(S.cb.sep/0.064*100)+' %';e('cbFlat').checked=!!S.cb.flat;}
+document.getElementById('cbShift').addEventListener('input',e=>{S.cb.shift=+e.target.value;save();syncCb();});
+document.getElementById('cbSep').addEventListener('input',e=>{S.cb.sep=+(e.target.value/100*0.064).toFixed(4);S.cb.flat=false;save();syncCb();});
+document.getElementById('cbFlat').addEventListener('change',e=>{S.cb.flat=e.target.checked;save();syncCb();});
+document.getElementById('cbReset').addEventListener('click',()=>{S.cb={sep:0.064,shift:null,flat:false};save();syncCb();});
+window.addEventListener('resize',()=>setTimeout(syncCb,120));syncCb();
 const clock=new THREE.Clock();let hudT=0,markFlash=0;const padPrev={};
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
@@ -1707,6 +1823,7 @@ renderer.setAnimationLoop(()=>{
     tileMeshes.forEach(m=>{const tgt=(m===hov?1.12:1)*(m.userData.film===selFilm?1.06:1);m.scale.setScalar(m.scale.x+(tgt-m.scale.x)*0.3);});}
   if(markFlash>0)markFlash-=dt;
   updAudio();
+  menuUpdate(dt);
   hudT+=dt;if(hudT>0.5){hudT=0;drawHUD();updRouteNow();updPoi(routeState(nowMin()));checkGuess(routeState(nowMin()));updVidRow();if((GAME.boardT=(GAME.boardT||0)+1)%20===0)renderGame();
     if(ARR.cur&&!ARR.done[ARR.cur.name]){ARR.done[ARR.cur.name]=1;pulseAll(0.6,250);const li=liveInfo[ARR.cur.name]||{};say('Next stop: '+ARR.cur.name.replace(/ C$/,' Central')+(li.track?', track '+li.track:'')+'.',true);}
     if(WAKE.v>0&&WAKE.mins>0&&!WAKE.buzzed){WAKE.buzzed=true;if(S.mode==='night')pulseAll(0.4,400);}}
